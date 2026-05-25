@@ -14,47 +14,29 @@ DesktopPluginComponent {
     widgetWidth: pluginData.widgetWidth !== undefined ? pluginData.widgetWidth : 360
     widgetHeight: pluginData.widgetHeight !== undefined ? pluginData.widgetHeight : 480
 
-    // Properties for search, category filtering, and added apps
+    // Properties for search and added apps
     property string searchQuery: ""
-    property string selectedCategory: "All"
     
     // Load added apps from persistent settings
     property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
     property var allAppsList: addedApps
-
-    // Categories list (English key, friendly Vietnamese translated label, and icon)
-    readonly property var categoriesList: [
-        { key: "All", label: I18n.tr("All"), icon: "apps" },
-        { key: "Internet", label: I18n.tr("Internet"), icon: "language" },
-        { key: "Development", label: I18n.tr("Development"), icon: "code" },
-        { key: "Game", label: I18n.tr("Game"), icon: "sports_esports" },
-        { key: "Graphics", label: I18n.tr("Graphics"), icon: "palette" },
-        { key: "Office", label: I18n.tr("Office"), icon: "description" },
-        { key: "Multimedia", label: I18n.tr("Multimedia"), icon: "movie" },
-        { key: "System", label: I18n.tr("System"), icon: "settings" },
-        { key: "Utility", label: I18n.tr("Utility"), icon: "build" }
-    ]
 
     // ListModel for active filtered apps
     ListModel {
         id: filteredModel
     }
 
-    // Filter addedApps based on search query and category
+    // Filter addedApps based on search query
     function updateFilteredModel() {
         filteredModel.clear();
         const search = searchQuery.toLowerCase().trim();
-        const category = selectedCategory;
 
         for (let app of allAppsList) {
             const matchesSearch = search === "" || 
                                   app.name.toLowerCase().indexOf(search) !== -1 ||
                                   (app.exec && app.exec.toLowerCase().indexOf(search) !== -1);
-            
-            const matchesCategory = category === "All" || 
-                                    (app.categories && app.categories.indexOf(category) !== -1);
 
-            if (matchesSearch && matchesCategory) {
+            if (matchesSearch) {
                 filteredModel.append({
                     appName: app.name,
                     appIcon: app.icon,
@@ -66,7 +48,6 @@ DesktopPluginComponent {
     }
 
     onSearchQueryChanged: updateFilteredModel()
-    onSelectedCategoryChanged: updateFilteredModel()
     onAllAppsListChanged: updateFilteredModel()
 
     Component.onCompleted: {
@@ -125,180 +106,154 @@ DesktopPluginComponent {
             anchors.margins: Theme.spacingM
             spacing: Theme.spacingS
 
-            // Top: Search Bar and Add Button
-            Row {
+            // Top: Header with Title, Expandable Search and Add Button
+            Item {
                 width: parent.width
-                spacing: Theme.spacingS
-                height: 36
+                height: 24
 
-                // Styled Search Box
-                Rectangle {
-                    id: searchContainer
-                    width: parent.width - 44
-                    height: parent.height
-                    radius: Theme.cornerRadiusSmall
-                    color: Theme.withAlpha(Theme.surfaceText, 0.04)
-                    border.color: searchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.15)
-                    border.width: 1
-
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                    DankIcon {
-                        id: searchIcon
-                        name: "search"
-                        size: 16
-                        color: Theme.surfaceText
-                        opacity: searchField.activeFocus ? 1.0 : 0.5
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacingS
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-
-                    TextInput {
-                        id: searchField
-                        anchors.left: searchIcon.right
-                        anchors.leftMargin: Theme.spacingXS
-                        anchors.right: clearBtn.visible ? clearBtn.left : parent.right
-                        anchors.rightMargin: Theme.spacingS
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.pixelSize: Theme.fontSizeSmall - 1
-                        color: Theme.surfaceText
-                        selectByMouse: true
-                        focus: true
-                        
-                        onTextChanged: {
-                            root.searchQuery = text;
-                        }
-
-                        Text {
-                            text: I18n.tr("Search launcher...")
-                            font.pixelSize: Theme.fontSizeSmall - 1
-                            color: Theme.surfaceText
-                            opacity: 0.35
-                            visible: searchField.text === "" && !searchField.activeFocus
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: clearBtn
-                        width: 20
-                        height: 20
-                        anchors.right: parent.right
-                        anchors.rightMargin: Theme.spacingS
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: searchField.text.length > 0
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        
-                        onClicked: {
-                            searchField.text = "";
-                            root.searchQuery = "";
-                        }
-
-                        DankIcon {
-                            anchors.centerIn: parent
-                            name: "close"
-                            size: 12
-                            color: Theme.surfaceText
-                            opacity: clearBtn.containsMouse ? 0.8 : 0.4
-                        }
-                    }
+                // Title
+                StyledText {
+                    text: I18n.tr("Applications")
+                    font.bold: true
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.surfaceText
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !searchContainer.expanded
                 }
 
-                // Add App Button
-                MouseArea {
-                    id: addBtn
-                    width: 36
-                    height: 36
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    
-                    onClicked: {
-                        addAppDialog.openDialog();
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Theme.cornerRadiusSmall
-                        color: addBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
-                        border.color: Theme.withAlpha(Theme.outline, 0.15)
-                        border.width: 1
-
-                        DankIcon {
-                            anchors.centerIn: parent
-                            name: "add"
-                            size: 16
-                            color: Theme.surfaceText
-                            opacity: addBtn.containsMouse ? 1.0 : 0.7
-                        }
-                    }
-                }
-            }
-
-            // Categories list: horizontal scrolling chips
-            ScrollView {
-                width: parent.width
-                height: 32
-                contentWidth: categoriesRow.width
-                clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
-
+                // Controls Row (Search and Add App Button)
                 Row {
-                    id: categoriesRow
-                    spacing: Theme.spacingXS
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Theme.spacingS
                     height: parent.height
 
-                    Repeater {
-                        model: root.categoriesList
+                    // Premium Expandable Search Container
+                    Rectangle {
+                        id: searchContainer
+                        property bool expanded: false
+                        width: expanded ? Math.min(200, root.width - Theme.spacingM * 2 - 40) : 24
+                        height: 24
+                        radius: 12
+                        color: expanded ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+                        border.color: expanded ? Theme.withAlpha(Theme.outline, 0.15) : "transparent"
+                        border.width: expanded ? 1 : 0
+                        clip: true
+                        anchors.verticalCenter: parent.verticalCenter
 
-                        delegate: MouseArea {
-                            id: chipArea
-                            width: chipRow.implicitWidth + Theme.spacingS * 2
-                            height: 28
+                        Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                        // Clicking container opens and focuses search
+                        MouseArea {
+                            anchors.fill: parent
+                            visible: !searchContainer.expanded
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            
                             onClicked: {
-                                root.selectedCategory = modelData.key;
+                                searchContainer.expanded = true;
+                                searchField.forceActiveFocus();
+                            }
+                        }
+
+                        DankIcon {
+                            id: searchIcon
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.leftMargin: searchContainer.expanded ? 4 : (searchContainer.width - size) / 2
+                            name: "search"
+                            size: 14
+                            color: Theme.surfaceText
+                            opacity: searchField.activeFocus ? 1.0 : (searchContainer.expanded ? 0.6 : 0.7)
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+
+                        TextInput {
+                            id: searchField
+                            anchors.left: searchIcon.right
+                            anchors.leftMargin: 4
+                            anchors.right: clearBtn.visible ? clearBtn.left : parent.right
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            font.pixelSize: Theme.fontSizeSmall - 1
+                            color: Theme.surfaceText
+                            selectByMouse: true
+                            visible: searchContainer.expanded
+                            opacity: searchContainer.expanded ? 1.0 : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            
+                            onTextChanged: {
+                                root.searchQuery = text;
                             }
 
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 14
-                                color: root.selectedCategory === modelData.key
-                                    ? Theme.primary
-                                    : (chipArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : "transparent")
-                                border.color: root.selectedCategory === modelData.key
-                                    ? "transparent"
-                                    : Theme.withAlpha(Theme.outline, 0.15)
-                                border.width: 1
+                            // Placeholder Text
+                            Text {
+                                text: I18n.tr("Search...")
+                                font.pixelSize: Theme.fontSizeSmall - 1
+                                color: Theme.surfaceText
+                                opacity: 0.35
+                                visible: searchField.text === "" && !searchField.activeFocus
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
 
-                                Behavior on color { ColorAnimation { duration: 150 } }
+                        // Clear and Collapse button
+                        MouseArea {
+                            id: clearBtn
+                            width: 12
+                            height: 12
+                            anchors.right: parent.right
+                            anchors.rightMargin: 4
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: searchContainer.expanded
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+                            
+                            onClicked: {
+                                searchField.text = "";
+                                root.searchQuery = "";
+                                searchField.focus = false;
+                                searchContainer.expanded = false;
+                            }
 
-                                Row {
-                                    id: chipRow
-                                    anchors.centerIn: parent
-                                    spacing: Theme.spacingXS
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "close"
+                                size: 10
+                                color: Theme.surfaceText
+                                opacity: clearBtn.containsMouse ? 0.9 : 0.5
+                            }
+                        }
+                    }
 
-                                    DankIcon {
-                                        name: modelData.icon
-                                        size: 14
-                                        color: root.selectedCategory === modelData.key ? Theme.primaryText : Theme.surfaceText
-                                        opacity: root.selectedCategory === modelData.key ? 1.0 : 0.7
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
+                    // Add App Button
+                    MouseArea {
+                        id: addBtn
+                        width: 24
+                        height: 24
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        anchors.verticalCenter: parent.verticalCenter
+                        
+                        onClicked: {
+                            addAppDialog.openDialog();
+                        }
 
-                                    StyledText {
-                                        text: modelData.label
-                                        font.pixelSize: Theme.fontSizeSmall
-                                        font.bold: root.selectedCategory === modelData.key
-                                        color: root.selectedCategory === modelData.key ? Theme.primaryText : Theme.surfaceText
-                                        opacity: root.selectedCategory === modelData.key ? 1.0 : 0.85
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Theme.cornerRadiusSmall
+                            color: addBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
+                            border.color: Theme.withAlpha(Theme.outline, 0.15)
+                            border.width: 1
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "add"
+                                size: 14
+                                color: Theme.surfaceText
+                                opacity: addBtn.containsMouse ? 1.0 : 0.7
                             }
                         }
                     }
@@ -309,7 +264,7 @@ DesktopPluginComponent {
             GridView {
                 id: appsGrid
                 width: parent.width
-                height: parent.height - 36 - 32 - Theme.spacingS * 2
+                height: parent.height - 24 - Theme.spacingS * 2
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 
