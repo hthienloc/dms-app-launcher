@@ -451,6 +451,7 @@ DesktopPluginComponent {
         color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.6) // glass dimmer
         radius: Theme.cornerRadius
         z: 100
+        focus: true
         visible: opened || opacity > 0
         opacity: opened ? 1.0 : 0.0
 
@@ -503,6 +504,7 @@ DesktopPluginComponent {
             anchors.centerIn: parent
             color: Theme.surfaceContainer
             radius: Theme.cornerRadius
+            focus: true
             border.color: Theme.withAlpha(Theme.outline, 0.15)
             border.width: 1
             clip: true
@@ -557,15 +559,6 @@ DesktopPluginComponent {
                     border.color: systemSearchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.1)
                     border.width: 1
 
-                    // MouseArea to capture click and force active focus on TextInput
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.IBeamCursor
-                        onClicked: {
-                            systemSearchField.forceActiveFocus();
-                        }
-                    }
-
                     DankIcon {
                         id: sysSearchIcon
                         name: "search"
@@ -587,6 +580,7 @@ DesktopPluginComponent {
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.surfaceText
                         selectByMouse: true
+                        focus: true
                         
                         onTextChanged: {
                             addAppDialog.systemAppsSearch = text;
