@@ -391,53 +391,58 @@ DesktopPluginComponent {
                             Quickshell.execDetached(["sh", "-c", appExec]);
                         }
 
-                        // App Card Hover Highlights
+                        // Premium Tighter Icon Container with Primary Border on Hover
                         Rectangle {
-                            anchors.fill: parent
+                            width: Math.round(root.iconSize * 1.4)
+                            height: width
+                            anchors.centerIn: parent
                             radius: Math.round(Theme.cornerRadius / 2)
-                            color: appCard.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.06) : "transparent"
-                            border.color: appCard.containsMouse ? Theme.withAlpha(Theme.outline, 0.1) : "transparent"
-                            border.width: 1
+                            
+                            color: appCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.primary, 0.04)
+                            border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.25)
+                            border.width: appCard.containsMouse ? 1.5 : 1
                             
                             Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on border.width { NumberAnimation { duration: 150 } }
+
+                            // Centered Icon inside the container
+                            Item {
+                                width: root.iconSize
+                                height: root.iconSize
+                                anchors.centerIn: parent
+                                
+                                Image {
+                                    id: appImage
+                                    anchors.fill: parent
+                                    source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                    fillMode: Image.PreserveAspectFit
+                                    scale: appCard.containsMouse ? 1.08 : 1.0
+                                    visible: appIcon !== ""
+                                    
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                                    }
+
+                                    onStatusChanged: {
+                                        if (status == Image.Error) {
+                                            fallbackIcon.visible = true;
+                                            appImage.visible = false;
+                                        }
+                                    }
+                                }
+
+                                DankIcon {
+                                    id: fallbackIcon
+                                    anchors.fill: parent
+                                    name: "extension"
+                                    size: parent.width
+                                    color: Theme.surfaceText
+                                    visible: appIcon === "" || !appImage.visible
+                                    scale: appCard.containsMouse ? 1.08 : 1.0
+                                }
+                            }
                         }
-
-           // App Icon (centered directly in card)
-           Item {
-               width: root.iconSize
-               height: root.iconSize
-               anchors.centerIn: parent
-               
-               Image {
-                   id: appImage
-                   anchors.fill: parent
-                   source: appIcon ? Quickshell.iconPath(appIcon) : ""
-                   fillMode: Image.PreserveAspectFit
-                   scale: appCard.containsMouse ? 1.08 : 1.0
-                   visible: appIcon !== ""
-                   
-                   Behavior on scale {
-                       NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-                   }
-
-                   onStatusChanged: {
-                       if (status == Image.Error) {
-                           fallbackIcon.visible = true;
-                           appImage.visible = false;
-                       }
-                   }
-               }
-
-               DankIcon {
-                   id: fallbackIcon
-                   anchors.fill: parent
-                   name: "extension"
-                   size: parent.width
-                   color: Theme.surfaceText
-                   visible: appIcon === "" || !appImage.visible
-                   scale: appCard.containsMouse ? 1.08 : 1.0
-               }
-           }
 
                         // Remove App Button (Visible on hover when in desktop Edit Mode)
                         MouseArea {
