@@ -8,6 +8,9 @@ import qs.Modules.Plugins
 DesktopPluginComponent {
     id: root
 
+    // Accepts keyboard focus permanently to support text inputs on Wayland
+    property bool acceptsKeyboardFocus: true
+
     // Desktop widget dimensions
     minWidth: 240
     minHeight: 320
