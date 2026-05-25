@@ -16,6 +16,7 @@ DesktopPluginComponent {
 
     // Properties for search and added apps
     property string searchQuery: ""
+    property bool editMode: false
     
     // Load added apps from persistent settings
     property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
@@ -243,7 +244,7 @@ DesktopPluginComponent {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: Theme.cornerRadiusSmall
+                            radius: Math.round(Theme.cornerRadius / 2)
                             color: addBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
                             border.color: Theme.withAlpha(Theme.outline, 0.15)
                             border.width: 1
@@ -254,6 +255,36 @@ DesktopPluginComponent {
                                 size: 14
                                 color: Theme.surfaceText
                                 opacity: addBtn.containsMouse ? 1.0 : 0.7
+                            }
+                        }
+                    }
+                    
+                    // Edit Mode Button
+                    MouseArea {
+                        id: editBtn
+                        width: 24
+                        height: 24
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        anchors.verticalCenter: parent.verticalCenter
+                        
+                        onClicked: {
+                            root.editMode = !root.editMode;
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Math.round(Theme.cornerRadius / 2)
+                            color: root.editMode ? Theme.withAlpha(Theme.primary, 0.15) : (editBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03))
+                            border.color: root.editMode ? Theme.primary : Theme.withAlpha(Theme.outline, 0.15)
+                            border.width: 1
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "edit"
+                                size: 14
+                                color: root.editMode ? Theme.primary : Theme.surfaceText
+                                opacity: editBtn.containsMouse || root.editMode ? 1.0 : 0.7
                             }
                         }
                     }
@@ -269,8 +300,8 @@ DesktopPluginComponent {
                 boundsBehavior: Flickable.StopAtBounds
                 
                 // Dynamically fit 3-5 columns based on widget width
-                cellWidth: Math.floor(width / Math.max(3, Math.floor(width / 76)))
-                cellHeight: 88
+                cellWidth: Math.floor(width / Math.max(3, Math.floor(width / 88)))
+                cellHeight: 100
 
                 model: filteredModel
 
@@ -301,7 +332,7 @@ DesktopPluginComponent {
                         // App Card Hover Highlights
                         Rectangle {
                             anchors.fill: parent
-                            radius: Theme.cornerRadiusSmall
+                            radius: Math.round(Theme.cornerRadius / 2)
                             color: appCard.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.06) : "transparent"
                             border.color: appCard.containsMouse ? Theme.withAlpha(Theme.outline, 0.1) : "transparent"
                             border.width: 1
@@ -313,18 +344,17 @@ DesktopPluginComponent {
                             anchors.fill: parent
                             anchors.margins: Theme.spacingXS
                             spacing: Theme.spacingXS
-                            anchors.centerIn: parent
 
                             // App Icon
-                            Item {
+                             Item {
                                 width: parent.width
-                                height: 38
+                                height: 48
                                 
                                 Image {
                                     id: appImage
                                     anchors.centerIn: parent
-                                    width: 32
-                                    height: 32
+                                    width: 44
+                                    height: 44
                                     source: appIcon ? Quickshell.iconPath(appIcon) : ""
                                     fillMode: Image.PreserveAspectFit
                                     scale: appCard.containsMouse ? 1.08 : 1.0
@@ -346,7 +376,7 @@ DesktopPluginComponent {
                                     id: fallbackIcon
                                     anchors.centerIn: parent
                                     name: "extension"
-                                    size: 32
+                                    size: 44
                                     color: Theme.surfaceText
                                     visible: appIcon === "" || !appImage.visible
                                     scale: appCard.containsMouse ? 1.08 : 1.0
@@ -399,16 +429,16 @@ DesktopPluginComponent {
                     }
                 }
             }
+        }
 
-            // Placeholder when widget is empty
-            StyledText {
-                text: I18n.tr("Click + to add applications")
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceText
-                opacity: 0.4
-                anchors.centerIn: parent
-                visible: filteredModel.count === 0 && searchQuery === ""
-            }
+        // Placeholder when widget is empty (placed outside Column to prevent layout issues)
+        StyledText {
+            text: I18n.tr("Click + to add applications")
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceText
+            opacity: 0.4
+            anchors.centerIn: parent
+            visible: filteredModel.count === 0 && searchQuery === ""
         }
     }
 
@@ -418,7 +448,8 @@ DesktopPluginComponent {
         parent: root
         width: Math.min(320, root.width - 20)
         height: Math.min(400, root.height - 20)
-        anchors.centerIn: parent
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
         padding: 0
         modal: true
         focus: true
@@ -508,7 +539,7 @@ DesktopPluginComponent {
                 Rectangle {
                     width: parent.width
                     height: 32
-                    radius: Theme.cornerRadiusSmall
+                    radius: Math.round(Theme.cornerRadius / 2)
                     color: Theme.withAlpha(Theme.surfaceText, 0.04)
                     border.color: systemSearchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.1)
                     border.width: 1
@@ -570,7 +601,7 @@ DesktopPluginComponent {
                     delegate: Rectangle {
                         width: parent.width
                         height: 38
-                        radius: Theme.cornerRadiusSmall - 2
+                        radius: Math.max(2, Math.round(Theme.cornerRadius / 2) - 2)
                         color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
 
                         Row {
