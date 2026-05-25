@@ -128,7 +128,7 @@ DesktopPluginComponent {
     // Glassmorphic Premium Background
     Rectangle {
         anchors.fill: parent
-        color: Theme.withAlpha(Theme.surfaceContainer, 0.75)
+        color: Theme.withAlpha(Theme.surfaceContainer, 0.88)
         radius: Theme.cornerRadius
         border.color: root.editMode ? Theme.primary : Theme.withAlpha(Theme.outline, 0.15)
         border.width: root.editMode ? 2 : 1
@@ -399,9 +399,9 @@ DesktopPluginComponent {
                             anchors.centerIn: parent
                             radius: Math.round(Theme.cornerRadius / 2)
                             
-                            color: appCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : Theme.withAlpha(Theme.primary, 0.04)
-                            border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.25)
-                            border.width: appCard.containsMouse ? 1.5 : 1
+                            color: appCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.25) : Theme.withAlpha(Theme.primary, 0.12)
+                            border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.45)
+                            border.width: appCard.containsMouse ? 2 : 1
                             
                             Behavior on color { ColorAnimation { duration: 150 } }
                             Behavior on border.color { ColorAnimation { duration: 150 } }
