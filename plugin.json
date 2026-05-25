@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "author": "Loc Huynh",
     "type": "desktop",
-    "capabilities": ["app-launcher"],
+    "capabilities": ["desktop-widget"],
     "component": "./AppLauncher.qml",
     "settings": "./AppLauncherSettings.qml",
     "icon": "apps",
