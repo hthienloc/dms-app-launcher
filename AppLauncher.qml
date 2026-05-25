@@ -23,7 +23,7 @@ DesktopPluginComponent {
     
     // Dynamic settings properties
     property real appSize: pluginData.appSize !== undefined ? pluginData.appSize : 88
-    readonly property real iconSize: Math.max(24, Math.round(appSize * 0.5))
+    readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
 
     // Connections to keep local properties in sync with pluginData settings
     Connections {
@@ -396,7 +396,7 @@ DesktopPluginComponent {
                         // Premium Tighter Icon Container with Primary Border on Hover
                         Rectangle {
                             id: containerRect
-                            width: Math.round(root.iconSize * 1.4)
+                            width: Math.round(root.iconSize * 1.45)
                             height: width
                             anchors.centerIn: parent
                             radius: Math.round(Theme.cornerRadius / 2)
