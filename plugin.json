@@ -1,7 +1,7 @@
 {
     "id": "dmsAppLauncher",
     "name": "Dank App Launcher",
-    "description": "Premium glassmorphic desktop widget to search, filter, and launch applications by categories",
+    "description": "Desktop widget to search, filter, and launch applications by categories",
     "version": "1.0.0",
     "author": "Antigravity",
     "type": "desktop",
@@ -9,6 +9,6 @@
     "component": "./AppLauncher.qml",
     "settings": "./AppLauncherSettings.qml",
     "icon": "apps",
-    "requires_dms": ">=0.1.0",
+    "requires_dms": ">=1.5.0",
     "permissions": ["settings_read", "settings_write"]
 }
