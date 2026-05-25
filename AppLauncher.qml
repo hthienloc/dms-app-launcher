@@ -444,28 +444,23 @@ DesktopPluginComponent {
 
     // Modal popup to select and add system applications
     // Modal in-widget dialog to select and add system applications
+    // Modal in-widget dimmer and dialog to select and add system applications
     Rectangle {
         id: addAppDialog
         anchors.fill: parent
-        anchors.margins: 4
-        color: Theme.withAlpha(Theme.surfaceContainer, 0.98)
+        color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.6) // glass dimmer
         radius: Theme.cornerRadius
-        border.color: Theme.withAlpha(Theme.outline, 0.15)
-        border.width: 1
-        clip: true
         z: 100
         visible: opened || opacity > 0
         opacity: opened ? 1.0 : 0.0
-        scale: opened ? 1.0 : 0.95
 
         Behavior on opacity { NumberAnimation { duration: 150 } }
-        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
         property bool opened: false
         property var systemAppsList: []
         property string systemAppsSearch: ""
 
-        // Prevent mouse clicks from propagating through the overlay to the background apps
+        // Prevent mouse clicks from propagating through the dimmer overlay
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
@@ -501,177 +496,197 @@ DesktopPluginComponent {
             opened = false;
         }
 
-        Column {
-            anchors.fill: parent
-            anchors.margins: Theme.spacingM
-            spacing: Theme.spacingS
+        // Centered Card Dialog
+        Rectangle {
+            width: Math.min(320, parent.width - 20)
+            height: Math.min(400, parent.height - 20)
+            anchors.centerIn: parent
+            color: Theme.surfaceContainer
+            radius: Theme.cornerRadius
+            border.color: Theme.withAlpha(Theme.outline, 0.15)
+            border.width: 1
+            clip: true
+            scale: addAppDialog.opened ? 1.0 : 0.95
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
-            // Dialog Header
-            Row {
-                width: parent.width
-                height: 24
-                
-                StyledText {
-                    text: I18n.tr("Add Applications")
-                    font.bold: true
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: Theme.surfaceText
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+            Column {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingM
+                spacing: Theme.spacingS
 
+                // Dialog Header
                 Item {
-                    width: parent.width - implicitWidth - 24
-                    height: 1
-                }
-
-                // Close Dialog Button
-                MouseArea {
-                    width: 24
-                    height: 24
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: addAppDialog.close()
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    DankIcon {
-                        anchors.centerIn: parent
-                        name: "close"
-                        size: 16
-                        color: Theme.surfaceText
-                        opacity: parent.containsMouse ? 1.0 : 0.6
-                    }
-                }
-            }
-
-            // System Apps Search Bar
-            Rectangle {
-                width: parent.width
-                height: 32
-                radius: Math.round(Theme.cornerRadius / 2)
-                color: Theme.withAlpha(Theme.surfaceText, 0.04)
-                border.color: systemSearchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.1)
-                border.width: 1
-
-                DankIcon {
-                    id: sysSearchIcon
-                    name: "search"
-                    size: 14
-                    color: Theme.surfaceText
-                    opacity: 0.5
-                    anchors.left: parent.left
-                    anchors.leftMargin: Theme.spacingS
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                TextInput {
-                    id: systemSearchField
-                    anchors.left: sysSearchIcon.right
-                    anchors.leftMargin: Theme.spacingXS
-                    anchors.right: parent.right
-                    anchors.rightMargin: Theme.spacingS
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.surfaceText
-                    selectByMouse: true
-                    
-                    onTextChanged: {
-                        addAppDialog.systemAppsSearch = text;
-                    }
-
-                    Text {
-                        text: I18n.tr("Search system apps...")
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.surfaceText
-                        opacity: 0.35
-                        visible: systemSearchField.text === "" && !systemSearchField.activeFocus
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                }
-            }
-
-            // System Apps ListView
-            ListView {
-                width: parent.width
-                height: parent.height - 24 - 32 - Theme.spacingS * 2
-                clip: true
-                spacing: 2
-                boundsBehavior: Flickable.StopAtBounds
-
-                model: {
-                    const search = addAppDialog.systemAppsSearch.toLowerCase().trim();
-                    return addAppDialog.systemAppsList.filter(app => {
-                        return search === "" || 
-                               app.name.toLowerCase().indexOf(search) !== -1 ||
-                               (app.exec && app.exec.toLowerCase().indexOf(search) !== -1);
-                    });
-                }
-
-                delegate: Rectangle {
                     width: parent.width
-                    height: 38
-                    radius: Math.max(2, Math.round(Theme.cornerRadius / 2) - 2)
-                    color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
-
-                    Row {
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.spacingS
-                        anchors.rightMargin: Theme.spacingS
-                        spacing: Theme.spacingS
+                    height: 24
+                    
+                    StyledText {
+                        text: I18n.tr("Add Applications")
+                        font.bold: true
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: Theme.surfaceText
+                        anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-
-                        // Icon
-                        Image {
-                            width: 24
-                            height: 24
-                            source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""
-                            fillMode: Image.PreserveAspectFit
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-
-                        // App Name
-                        StyledText {
-                            text: modelData.name
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceText
-                            elide: Text.ElideRight
-                            width: parent.width - 24 - 32 - Theme.spacingS * 2
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
                     }
 
-                    // Status Badge or Add Icon
-                    property bool isAdded: root.addedApps.some(a => a.name === modelData.name)
-
-                    Rectangle {
-                        width: 22
-                        height: 22
-                        radius: 11
+                    // Close Dialog Button
+                    MouseArea {
+                        width: 24
+                        height: 24
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: addAppDialog.close()
                         anchors.right: parent.right
-                        anchors.rightMargin: Theme.spacingS
                         anchors.verticalCenter: parent.verticalCenter
-                        color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
-                        border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3)
-                        border.width: 1
 
                         DankIcon {
                             anchors.centerIn: parent
-                            name: parent.parent.isAdded ? "done" : "add"
-                            size: 12
-                            color: parent.parent.isAdded ? Theme.primary : Theme.surfaceText
+                            name: "close"
+                            size: 16
+                            color: Theme.surfaceText
+                            opacity: parent.containsMouse ? 1.0 : 0.6
+                        }
+                    }
+                }
+
+                // System Apps Search Bar
+                Rectangle {
+                    width: parent.width
+                    height: 32
+                    radius: Math.round(Theme.cornerRadius / 2)
+                    color: Theme.withAlpha(Theme.surfaceText, 0.04)
+                    border.color: systemSearchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.1)
+                    border.width: 1
+
+                    // MouseArea to capture click and force active focus on TextInput
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.IBeamCursor
+                        onClicked: {
+                            systemSearchField.forceActiveFocus();
                         }
                     }
 
-                    MouseArea {
-                        id: listMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+                    DankIcon {
+                        id: sysSearchIcon
+                        name: "search"
+                        size: 14
+                        color: Theme.surfaceText
+                        opacity: 0.5
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    TextInput {
+                        id: systemSearchField
+                        anchors.left: sysSearchIcon.right
+                        anchors.leftMargin: Theme.spacingXS
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceText
+                        selectByMouse: true
                         
-                        onClicked: {
-                            if (parent.isAdded) {
-                                root.removeApp(modelData.name);
-                            } else {
-                                root.addApp(modelData);
+                        onTextChanged: {
+                            addAppDialog.systemAppsSearch = text;
+                        }
+
+                        Text {
+                            text: I18n.tr("Search system apps...")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceText
+                            opacity: 0.35
+                            visible: systemSearchField.text === "" && !systemSearchField.activeFocus
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
+
+                // System Apps ListView
+                ListView {
+                    width: parent.width
+                    height: parent.height - 24 - 32 - Theme.spacingS * 2
+                    clip: true
+                    spacing: 2
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    model: {
+                        const search = addAppDialog.systemAppsSearch.toLowerCase().trim();
+                        return addAppDialog.systemAppsList.filter(app => {
+                            return search === "" || 
+                                   app.name.toLowerCase().indexOf(search) !== -1 ||
+                                   (app.exec && app.exec.toLowerCase().indexOf(search) !== -1);
+                        });
+                    }
+
+                    delegate: Rectangle {
+                        width: parent.width
+                        height: 38
+                        radius: Math.max(2, Math.round(Theme.cornerRadius / 2) - 2)
+                        color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+
+                        Row {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.spacingS
+                            anchors.rightMargin: Theme.spacingS
+                            spacing: Theme.spacingS
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            // Icon
+                            Image {
+                                width: 24
+                                height: 24
+                                source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""
+                                fillMode: Image.PreserveAspectFit
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            // App Name
+                            StyledText {
+                                text: modelData.name
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceText
+                                elide: Text.ElideRight
+                                width: parent.width - 24 - 32 - Theme.spacingS * 2
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        // Status Badge or Add Icon
+                        property bool isAdded: root.addedApps.some(a => a.name === modelData.name)
+
+                        Rectangle {
+                            width: 22
+                            height: 22
+                            radius: 11
+                            anchors.right: parent.right
+                            anchors.rightMargin: Theme.spacingS
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
+                            border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3)
+                            border.width: 1
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: parent.parent.isAdded ? "done" : "add"
+                                size: 12
+                                color: parent.parent.isAdded ? Theme.primary : Theme.surfaceText
+                            }
+                        }
+
+                        MouseArea {
+                            id: listMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            
+                            onClicked: {
+                                if (parent.isAdded) {
+                                    root.removeApp(modelData.name);
+                                } else {
+                                    root.addApp(modelData);
+                                }
                             }
                         }
                     }
