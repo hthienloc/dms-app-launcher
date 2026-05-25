@@ -22,9 +22,43 @@ DesktopPluginComponent {
     property bool editMode: false
     
     // Dynamic settings properties
-    readonly property real appSize: pluginData.appSize !== undefined ? pluginData.appSize : 88
-    readonly property bool showName: pluginData.showName !== undefined ? pluginData.showName : true
+    property real appSize: pluginData.appSize !== undefined ? pluginData.appSize : 88
+    property bool showName: pluginData.showName !== undefined ? pluginData.showName : true
     readonly property real iconSize: Math.max(24, Math.round(appSize * 0.5))
+
+    // Connections to keep local properties in sync with pluginData settings
+    Connections {
+        target: pluginService ? pluginService : null
+        ignoreUnknownSignals: true
+        function onPluginDataChanged(id) {
+            if (id === pluginId) {
+                if (pluginData.appSize !== undefined) root.appSize = pluginData.appSize;
+                if (pluginData.showName !== undefined) root.showName = pluginData.showName;
+            }
+        }
+    }
+
+    // Toggle application names visibility
+    function toggleShowName() {
+        const newValue = !root.showName;
+        root.showName = newValue;
+        if (pluginService) {
+            pluginService.savePluginData(pluginId, "showName", newValue);
+        }
+    }
+
+    // Cycle grid sizes (64 -> 88 -> 112)
+    function cycleAppSize() {
+        let nextSize = 88;
+        if (root.appSize === 88) nextSize = 112;
+        else if (root.appSize === 112) nextSize = 64;
+        else nextSize = 88;
+
+        root.appSize = nextSize;
+        if (pluginService) {
+            pluginService.savePluginData(pluginId, "appSize", nextSize);
+        }
+    }
     
     // Load added apps from persistent settings
     property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
@@ -293,6 +327,66 @@ DesktopPluginComponent {
                                 size: 14
                                 color: root.editMode ? Theme.primary : Theme.surfaceText
                                 opacity: editBtn.containsMouse || root.editMode ? 1.0 : 0.7
+                            }
+                        }
+                    }
+
+                    // Toggle Show Name Button
+                    MouseArea {
+                        id: toggleNameBtn
+                        width: 24
+                        height: 24
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        anchors.verticalCenter: parent.verticalCenter
+                        
+                        onClicked: {
+                            root.toggleShowName();
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Math.round(Theme.cornerRadius / 2)
+                            color: toggleNameBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
+                            border.color: Theme.withAlpha(Theme.outline, 0.15)
+                            border.width: 1
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: root.showName ? "label" : "label_off"
+                                size: 14
+                                color: Theme.surfaceText
+                                opacity: toggleNameBtn.containsMouse ? 1.0 : 0.7
+                            }
+                        }
+                    }
+
+                    // Cycle App Size Button
+                    MouseArea {
+                        id: cycleSizeBtn
+                        width: 24
+                        height: 24
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        anchors.verticalCenter: parent.verticalCenter
+                        
+                        onClicked: {
+                            root.cycleAppSize();
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Math.round(Theme.cornerRadius / 2)
+                            color: cycleSizeBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
+                            border.color: Theme.withAlpha(Theme.outline, 0.15)
+                            border.width: 1
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "grid_view"
+                                size: 14
+                                color: Theme.surfaceText
+                                opacity: cycleSizeBtn.containsMouse ? 1.0 : 0.7
                             }
                         }
                     }
