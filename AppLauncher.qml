@@ -21,6 +21,11 @@ DesktopPluginComponent {
     property string searchQuery: ""
     property bool editMode: false
     
+    // Dynamic settings properties
+    readonly property real appSize: pluginData.appSize !== undefined ? pluginData.appSize : 88
+    readonly property bool showName: pluginData.showName !== undefined ? pluginData.showName : true
+    readonly property real iconSize: Math.max(24, Math.round(appSize * 0.5))
+    
     // Load added apps from persistent settings
     property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
     property var allAppsList: addedApps
@@ -302,9 +307,8 @@ DesktopPluginComponent {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 
-                // Dynamically fit 3-5 columns based on widget width
-                cellWidth: Math.floor(width / Math.max(3, Math.floor(width / 88)))
-                cellHeight: 100
+                cellWidth: Math.floor(width / Math.max(2, Math.floor(width / root.appSize)))
+                cellHeight: root.appSize + (root.showName ? 20 : 0) + 12
 
                 model: filteredModel
 
@@ -346,18 +350,18 @@ DesktopPluginComponent {
                         Column {
                             anchors.fill: parent
                             anchors.margins: Theme.spacingXS
-                            spacing: Theme.spacingXS
+                            spacing: root.showName ? Theme.spacingXS : 0
 
                             // App Icon
                              Item {
                                 width: parent.width
-                                height: 48
+                                height: root.iconSize + 8
                                 
                                 Image {
                                     id: appImage
                                     anchors.centerIn: parent
-                                    width: 44
-                                    height: 44
+                                    width: root.iconSize
+                                    height: root.iconSize
                                     source: appIcon ? Quickshell.iconPath(appIcon) : ""
                                     fillMode: Image.PreserveAspectFit
                                     scale: appCard.containsMouse ? 1.08 : 1.0
@@ -379,7 +383,7 @@ DesktopPluginComponent {
                                     id: fallbackIcon
                                     anchors.centerIn: parent
                                     name: "extension"
-                                    size: 44
+                                    size: root.iconSize
                                     color: Theme.surfaceText
                                     visible: appIcon === "" || !appImage.visible
                                     scale: appCard.containsMouse ? 1.08 : 1.0
@@ -397,6 +401,7 @@ DesktopPluginComponent {
                                 maximumLineCount: 2
                                 wrapMode: Text.WrapAnywhere
                                 opacity: appCard.containsMouse ? 1.0 : 0.8
+                                visible: root.showName
                             }
                         }
 

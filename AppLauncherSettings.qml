@@ -28,5 +28,20 @@ PluginSettings {
             maximum: 800
             unit: "px"
         }
+
+        SliderSetting {
+            settingKey: "appSize"
+            label: I18n.tr("App Sizing Reference")
+            defaultValue: 88
+            minimum: 64
+            maximum: 128
+            unit: "px"
+        }
+
+        ToggleSetting {
+            settingKey: "showName"
+            label: I18n.tr("Show App Labels")
+            defaultValue: true
+        }
     }
 }
