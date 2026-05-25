@@ -1,6 +1,6 @@
 {
-    "id": "dmsAppLauncher",
-    "name": "Dank App Launcher",
+    "id": "appLauncher",
+    "name": "App Launcher",
     "description": "Desktop widget to search, filter, and launch applications by categories",
     "version": "1.0.0",
     "author": "Loc Huynh",
