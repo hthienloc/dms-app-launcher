@@ -3,7 +3,7 @@
     "name": "Dank App Launcher",
     "description": "Desktop widget to search, filter, and launch applications by categories",
     "version": "1.0.0",
-    "author": "Antigravity",
+    "author": "Loc Huynh",
     "type": "desktop",
     "capabilities": ["app-launcher"],
     "component": "./AppLauncher.qml",
