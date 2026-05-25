@@ -6,7 +6,10 @@ import re
 DESKTOP_DIRS = [
     "/usr/share/applications",
     "/usr/local/share/applications",
-    os.path.expanduser("~/.local/share/applications")
+    os.path.expanduser("~/.local/share/applications"),
+    "/var/lib/flatpak/exports/share/applications",
+    os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
+    "/var/lib/snapd/desktop/applications"
 ]
 
 CATEGORY_MAPPING = {
