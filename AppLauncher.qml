@@ -36,11 +36,12 @@ DesktopPluginComponent {
         }
     }
 
-    // Cycle grid sizes (64 -> 88 -> 112)
+    // Cycle grid sizes (64 -> 88 -> 112 -> 136)
     function cycleAppSize() {
         let nextSize = 88;
         if (root.appSize === 88) nextSize = 112;
-        else if (root.appSize === 112) nextSize = 64;
+        else if (root.appSize === 112) nextSize = 136;
+        else if (root.appSize === 136) nextSize = 64;
         else nextSize = 88;
 
         root.appSize = nextSize;
