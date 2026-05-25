@@ -122,30 +122,56 @@ DesktopPluginComponent {
                 spacing: Theme.spacingS
                 height: 36
 
-                DankTextField {
-                    id: searchField
+                Rectangle {
+                    id: searchContainer
                     width: parent.width - 44
                     height: parent.height
-                    placeholderText: I18n.tr("Search apps...")
-                    focus: true
-                    
-                    onTextChanged: {
-                        root.searchQuery = text;
-                    }
+                    radius: Theme.cornerRadiusSmall
+                    color: Theme.withAlpha(Theme.surfaceText, 0.04)
+                    border.color: searchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.15)
+                    border.width: 1
 
-                    // Left Search Icon
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
                     DankIcon {
+                        id: searchIcon
                         name: "search"
                         size: 16
                         color: Theme.surfaceText
-                        opacity: 0.5
+                        opacity: searchField.activeFocus ? 1.0 : 0.5
                         anchors.left: parent.left
                         anchors.leftMargin: Theme.spacingS
                         anchors.verticalCenter: parent.verticalCenter
                     }
 
-                    // Right Clear Button (Visible only when text is entered)
+                    TextInput {
+                        id: searchField
+                        anchors.left: searchIcon.right
+                        anchors.leftMargin: Theme.spacingXS
+                        anchors.right: clearBtn.visible ? clearBtn.left : parent.right
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: Theme.fontSizeSmall - 1
+                        color: Theme.surfaceText
+                        selectByMouse: true
+                        focus: true
+                        
+                        onTextChanged: {
+                            root.searchQuery = text;
+                        }
+
+                        Text {
+                            text: I18n.tr("Search apps...")
+                            font.pixelSize: Theme.fontSizeSmall - 1
+                            color: Theme.surfaceText
+                            opacity: 0.35
+                            visible: searchField.text === "" && !searchField.activeFocus
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
                     MouseArea {
+                        id: clearBtn
                         width: 20
                         height: 20
                         anchors.right: parent.right
@@ -165,7 +191,7 @@ DesktopPluginComponent {
                             name: "close"
                             size: 12
                             color: Theme.surfaceText
-                            opacity: parent.containsMouse ? 0.8 : 0.4
+                            opacity: clearBtn.containsMouse ? 0.8 : 0.4
                         }
                     }
                 }
@@ -329,16 +355,36 @@ DesktopPluginComponent {
                                 width: parent.width
                                 height: 38
                                 
-                                DankIcon {
+                                Image {
+                                    id: appImage
                                     anchors.centerIn: parent
-                                    name: appIcon !== "" ? appIcon : "extension"
-                                    size: 32
-                                    color: Theme.surfaceText
+                                    width: 32
+                                    height: 32
+                                    source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                    fillMode: Image.PreserveAspectFit
                                     scale: appCard.containsMouse ? 1.08 : 1.0
+                                    visible: appIcon !== ""
                                     
                                     Behavior on scale {
                                         NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
                                     }
+
+                                    onStatusChanged: {
+                                        if (status == Image.Error) {
+                                            fallbackIcon.visible = true;
+                                            appImage.visible = false;
+                                        }
+                                    }
+                                }
+
+                                DankIcon {
+                                    id: fallbackIcon
+                                    anchors.centerIn: parent
+                                    name: "extension"
+                                    size: 32
+                                    color: Theme.surfaceText
+                                    visible: appIcon === "" || !appImage.visible
+                                    scale: appCard.containsMouse ? 1.08 : 1.0
                                 }
                             }
 
