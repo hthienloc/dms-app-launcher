@@ -23,7 +23,6 @@ DesktopPluginComponent {
     
     // Dynamic settings properties
     property real appSize: pluginData.appSize !== undefined ? pluginData.appSize : 88
-    property bool showName: pluginData.showName !== undefined ? pluginData.showName : true
     readonly property real iconSize: Math.max(24, Math.round(appSize * 0.5))
 
     // Connections to keep local properties in sync with pluginData settings
@@ -33,17 +32,7 @@ DesktopPluginComponent {
         function onPluginDataChanged(id) {
             if (id === pluginId) {
                 if (pluginData.appSize !== undefined) root.appSize = pluginData.appSize;
-                if (pluginData.showName !== undefined) root.showName = pluginData.showName;
             }
-        }
-    }
-
-    // Toggle application names visibility
-    function toggleShowName() {
-        const newValue = !root.showName;
-        root.showName = newValue;
-        if (pluginService) {
-            pluginService.savePluginData(pluginId, "showName", newValue);
         }
     }
 
@@ -331,35 +320,7 @@ DesktopPluginComponent {
                         }
                     }
 
-                    // Toggle Show Name Button
-                    MouseArea {
-                        id: toggleNameBtn
-                        width: 24
-                        height: 24
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        onClicked: {
-                            root.toggleShowName();
-                        }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: toggleNameBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
-                            border.color: Theme.withAlpha(Theme.outline, 0.15)
-                            border.width: 1
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: root.showName ? "label" : "label_off"
-                                size: 14
-                                color: Theme.surfaceText
-                                opacity: toggleNameBtn.containsMouse ? 1.0 : 0.7
-                            }
-                        }
-                    }
 
                     // Cycle App Size Button
                     MouseArea {
@@ -402,7 +363,7 @@ DesktopPluginComponent {
                 boundsBehavior: Flickable.StopAtBounds
                 
                 cellWidth: Math.floor(width / Math.max(2, Math.floor(width / root.appSize)))
-                cellHeight: root.appSize + (root.showName ? 20 : 0) + 12
+                cellHeight: cellWidth
 
                 model: filteredModel
 
@@ -441,63 +402,42 @@ DesktopPluginComponent {
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: Theme.spacingXS
-                            spacing: root.showName ? Theme.spacingXS : 0
+           // App Icon (centered directly in card)
+           Item {
+               width: root.iconSize
+               height: root.iconSize
+               anchors.centerIn: parent
+               
+               Image {
+                   id: appImage
+                   anchors.fill: parent
+                   source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                   fillMode: Image.PreserveAspectFit
+                   scale: appCard.containsMouse ? 1.08 : 1.0
+                   visible: appIcon !== ""
+                   
+                   Behavior on scale {
+                       NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                   }
 
-                            // App Icon
-                             Item {
-                                width: parent.width
-                                height: root.iconSize + 8
-                                
-                                Image {
-                                    id: appImage
-                                    anchors.centerIn: parent
-                                    width: root.iconSize
-                                    height: root.iconSize
-                                    source: appIcon ? Quickshell.iconPath(appIcon) : ""
-                                    fillMode: Image.PreserveAspectFit
-                                    scale: appCard.containsMouse ? 1.08 : 1.0
-                                    visible: appIcon !== ""
-                                    
-                                    Behavior on scale {
-                                        NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-                                    }
+                   onStatusChanged: {
+                       if (status == Image.Error) {
+                           fallbackIcon.visible = true;
+                           appImage.visible = false;
+                       }
+                   }
+               }
 
-                                    onStatusChanged: {
-                                        if (status == Image.Error) {
-                                            fallbackIcon.visible = true;
-                                            appImage.visible = false;
-                                        }
-                                    }
-                                }
-
-                                DankIcon {
-                                    id: fallbackIcon
-                                    anchors.centerIn: parent
-                                    name: "extension"
-                                    size: root.iconSize
-                                    color: Theme.surfaceText
-                                    visible: appIcon === "" || !appImage.visible
-                                    scale: appCard.containsMouse ? 1.08 : 1.0
-                                }
-                            }
-
-                            // App Name
-                            StyledText {
-                                width: parent.width
-                                text: appName
-                                font.pixelSize: Theme.fontSizeSmall - 1
-                                color: Theme.surfaceText
-                                horizontalAlignment: Text.AlignHCenter
-                                elide: Text.ElideRight
-                                maximumLineCount: 2
-                                wrapMode: Text.WrapAnywhere
-                                opacity: appCard.containsMouse ? 1.0 : 0.8
-                                visible: root.showName
-                            }
-                        }
+               DankIcon {
+                   id: fallbackIcon
+                   anchors.fill: parent
+                   name: "extension"
+                   size: parent.width
+                   color: Theme.surfaceText
+                   visible: appIcon === "" || !appImage.visible
+                   scale: appCard.containsMouse ? 1.08 : 1.0
+               }
+           }
 
                         // Remove App Button (Visible on hover when in desktop Edit Mode)
                         MouseArea {

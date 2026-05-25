@@ -37,11 +37,5 @@ PluginSettings {
             maximum: 128
             unit: "px"
         }
-
-        ToggleSetting {
-            settingKey: "showName"
-            label: I18n.tr("Show App Labels")
-            defaultValue: true
-        }
     }
 }
