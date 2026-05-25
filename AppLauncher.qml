@@ -389,11 +389,13 @@ DesktopPluginComponent {
                         cursorShape: Qt.PointingHandCursor
                         
                         onClicked: {
+                            clickLaunchAnimation.start();
                             Quickshell.execDetached(["sh", "-c", appExec]);
                         }
 
                         // Premium Tighter Icon Container with Primary Border on Hover
                         Rectangle {
+                            id: containerRect
                             width: Math.round(root.iconSize * 1.4)
                             height: width
                             anchors.centerIn: parent
@@ -403,9 +405,63 @@ DesktopPluginComponent {
                             border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.45)
                             border.width: appCard.containsMouse ? 2 : 1
                             
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                            Behavior on border.width { NumberAnimation { duration: 150 } }
+                            Behavior on color { enabled: !clickLaunchAnimation.running; ColorAnimation { duration: 150 } }
+                            Behavior on border.color { enabled: !clickLaunchAnimation.running; ColorAnimation { duration: 150 } }
+                            Behavior on border.width { enabled: !clickLaunchAnimation.running; NumberAnimation { duration: 150 } }
+
+                            SequentialAnimation {
+                                id: clickLaunchAnimation
+                                
+                                NumberAnimation {
+                                    target: containerRect
+                                    property: "scale"
+                                    to: 0.88
+                                    duration: 60
+                                    easing.type: Easing.OutQuad
+                                }
+                                ParallelAnimation {
+                                    NumberAnimation {
+                                        target: containerRect
+                                        property: "scale"
+                                        to: 1.15
+                                        duration: 180
+                                        easing.type: Easing.OutBack
+                                    }
+                                    ColorAnimation {
+                                        target: containerRect
+                                        property: "color"
+                                        to: Theme.withAlpha(Theme.primary, 0.45)
+                                        duration: 180
+                                    }
+                                    ColorAnimation {
+                                        target: containerRect
+                                        property: "border.color"
+                                        to: Theme.primary
+                                        duration: 180
+                                    }
+                                }
+                                ParallelAnimation {
+                                    NumberAnimation {
+                                        target: containerRect
+                                        property: "scale"
+                                        to: 1.0
+                                        duration: 200
+                                        easing.type: Easing.OutQuad
+                                    }
+                                    ColorAnimation {
+                                        target: containerRect
+                                        property: "color"
+                                        to: appCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.25) : Theme.withAlpha(Theme.primary, 0.12)
+                                        duration: 200
+                                    }
+                                    ColorAnimation {
+                                        target: containerRect
+                                        property: "border.color"
+                                        to: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.45)
+                                        duration: 200
+                                    }
+                                }
+                            }
 
                             // Centered Icon inside the container
                             Item {
