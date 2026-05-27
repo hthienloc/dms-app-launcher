@@ -13,6 +13,12 @@ An application launcher widget for DankMaterialShell (DMS) to search and launch 
 git clone https://github.com/hthienloc/dms-common ~/.config/DankMaterialShell/plugins/dms-common
 
 # 2. Install this plugin
+dms plugins install appLauncher
+```
+
+Or manually:
+
+```bash
 git clone https://github.com/hthienloc/dms-app-launcher ~/.config/DankMaterialShell/plugins/dmsAppLauncher
 ```
 
