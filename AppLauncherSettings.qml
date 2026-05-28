@@ -30,6 +30,15 @@ PluginSettings {
         }
 
         SliderSetting {
+            settingKey: "backgroundOpacity"
+            label: I18n.tr("Background Opacity")
+            defaultValue: 80
+            minimum: 0
+            maximum: 100
+            unit: "%"
+        }
+
+        SliderSetting {
             settingKey: "appSize"
             label: I18n.tr("App Icon Size")
             description: I18n.tr("Adjust the size of application launcher items.")

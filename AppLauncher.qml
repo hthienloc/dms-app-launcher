@@ -25,6 +25,7 @@ DesktopPluginComponent {
     readonly property real appSize: pluginData.appSize ?? 88
     readonly property string viewMode: pluginData.viewMode ?? "grid"
     readonly property bool showHeader: pluginData.showHeader ?? true
+    readonly property real backgroundOpacity: (pluginData.backgroundOpacity ?? 80) / 100
     readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
     
     // Load added apps from persistent settings
@@ -105,7 +106,7 @@ DesktopPluginComponent {
     // Glassmorphic Premium Background
     Rectangle {
         anchors.fill: parent
-        color: Theme.withAlpha(Theme.surfaceContainer, 0.88)
+        color: Theme.withAlpha(Theme.surfaceContainer, root.backgroundOpacity)
         radius: Theme.cornerRadius
         border.color: root.editMode ? Theme.primary : Theme.withAlpha(Theme.outline, 0.15)
         border.width: root.editMode ? 2 : 1
