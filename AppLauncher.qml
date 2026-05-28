@@ -103,6 +103,17 @@ DesktopPluginComponent {
         saveAddedApps(list);
     }
 
+    function moveAppInList(sourceName, targetName) {
+        let list = [...root.addedApps];
+        let sourceIndex = list.findIndex(a => a.name === sourceName);
+        let targetIndex = list.findIndex(a => a.name === targetName);
+        if (sourceIndex !== -1 && targetIndex !== -1) {
+            let item = list.splice(sourceIndex, 1)[0];
+            list.splice(targetIndex, 0, item);
+            saveAddedApps(list);
+        }
+    }
+
     // Glassmorphic Premium Background
     Rectangle {
         anchors.fill: parent
@@ -333,6 +344,16 @@ DesktopPluginComponent {
                     width: appsGrid.cellWidth
                     height: appsGrid.cellHeight
 
+                    DropArea {
+                        anchors.fill: parent
+                        keys: ["appLauncherItem"]
+                        onEntered: drag => {
+                            if (drag.source && drag.source.appName !== appName) {
+                                root.moveAppInList(drag.source.appName, appName);
+                            }
+                        }
+                    }
+
                     MouseArea {
                         id: appCard
                         anchors.fill: parent
@@ -340,7 +361,11 @@ DesktopPluginComponent {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         
+                        drag.target: root.editMode ? containerRect : null
+                        drag.axis: Drag.XAndYAxis
+
                         onClicked: {
+                            if (root.editMode) return;
                             clickLaunchAnimation.start();
                             Quickshell.execDetached(["sh", "-c", appExec]);
                         }
@@ -357,9 +382,24 @@ DesktopPluginComponent {
                             border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.45)
                             border.width: appCard.containsMouse ? 2 : 1
                             
-                            Behavior on color { enabled: !clickLaunchAnimation.running; ColorAnimation { duration: 150 } }
-                            Behavior on border.color { enabled: !clickLaunchAnimation.running; ColorAnimation { duration: 150 } }
-                            Behavior on border.width { enabled: !clickLaunchAnimation.running; NumberAnimation { duration: 150 } }
+                            Behavior on color { enabled: !clickLaunchAnimation.running && !appCard.drag.active; ColorAnimation { duration: 150 } }
+                            Behavior on border.color { enabled: !clickLaunchAnimation.running && !appCard.drag.active; ColorAnimation { duration: 150 } }
+                            Behavior on border.width { enabled: !clickLaunchAnimation.running && !appCard.drag.active; NumberAnimation { duration: 150 } }
+
+                            Drag.active: appCard.drag.active
+                            Drag.keys: ["appLauncherItem"]
+                            Drag.hotSpot.x: width / 2
+                            Drag.hotSpot.y: height / 2
+                            property string appName: appName
+
+                            states: [
+                                State {
+                                    name: "dragging"
+                                    when: appCard.drag.active
+                                    ParentChange { target: containerRect; parent: root }
+                                    AnchorChanges { target: containerRect; anchors.horizontalCenter: undefined; anchors.verticalCenter: undefined }
+                                }
+                            ]
 
                             SequentialAnimation {
                                 id: clickLaunchAnimation
@@ -510,6 +550,16 @@ DesktopPluginComponent {
                     width: appsList.width
                     height: Math.round(36 * (root.appSize / 88.0))
 
+                    DropArea {
+                        anchors.fill: parent
+                        keys: ["appLauncherItem"]
+                        onEntered: drag => {
+                            if (drag.source && drag.source.appName !== appName) {
+                                root.moveAppInList(drag.source.appName, appName);
+                            }
+                        }
+                    }
+
                     MouseArea {
                         id: listAppCard
                         anchors.fill: parent
@@ -518,14 +568,20 @@ DesktopPluginComponent {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
 
+                        drag.target: root.editMode ? listContainerRect : null
+                        drag.axis: Drag.XAndYAxis
+
                         onClicked: {
+                            if (root.editMode) return;
                             listClickLaunchAnimation.start();
                             Quickshell.execDetached(["sh", "-c", appExec]);
                         }
 
                         Rectangle {
                             id: listContainerRect
-                            anchors.fill: parent
+                            width: listDelegateRoot.width
+                            height: listDelegateRoot.height
+                            anchors.centerIn: parent
                             radius: Math.round(Theme.cornerRadius / 2)
                             color: listAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
                             border.color: listAppCard.containsMouse ? Theme.primary : "transparent"
@@ -536,6 +592,21 @@ DesktopPluginComponent {
                                 NumberAnimation { target: listContainerRect; property: "scale"; to: 0.98; duration: 60 }
                                 NumberAnimation { target: listContainerRect; property: "scale"; to: 1.0; duration: 100 }
                             }
+
+                            Drag.active: listAppCard.drag.active
+                            Drag.keys: ["appLauncherItem"]
+                            Drag.hotSpot.x: width / 2
+                            Drag.hotSpot.y: height / 2
+                            property string appName: appName
+
+                            states: [
+                                State {
+                                    name: "dragging"
+                                    when: listAppCard.drag.active
+                                    ParentChange { target: listContainerRect; parent: root }
+                                    AnchorChanges { target: listContainerRect; anchors.horizontalCenter: undefined; anchors.verticalCenter: undefined }
+                                }
+                            ]
 
                             Row {
                                 anchors.fill: parent
@@ -647,6 +718,16 @@ DesktopPluginComponent {
                     width: appsCompact.cellWidth
                     height: appsCompact.cellHeight
 
+                    DropArea {
+                        anchors.fill: parent
+                        keys: ["appLauncherItem"]
+                        onEntered: drag => {
+                            if (drag.source && drag.source.appName !== appName) {
+                                root.moveAppInList(drag.source.appName, appName);
+                            }
+                        }
+                    }
+
                     MouseArea {
                         id: compactAppCard
                         anchors.fill: parent
@@ -655,14 +736,20 @@ DesktopPluginComponent {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
 
+                        drag.target: root.editMode ? compactContainerRect : null
+                        drag.axis: Drag.XAndYAxis
+
                         onClicked: {
+                            if (root.editMode) return;
                             compactClickLaunchAnimation.start();
                             Quickshell.execDetached(["sh", "-c", appExec]);
                         }
 
                         Rectangle {
                             id: compactContainerRect
-                            anchors.fill: parent
+                            width: compactDelegateRoot.width
+                            height: compactDelegateRoot.height
+                            anchors.centerIn: parent
                             radius: Math.round(Theme.cornerRadius / 2)
                             color: compactAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
                             border.color: compactAppCard.containsMouse ? Theme.primary : "transparent"
@@ -673,6 +760,21 @@ DesktopPluginComponent {
                                 NumberAnimation { target: compactContainerRect; property: "scale"; to: 0.98; duration: 60 }
                                 NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.0; duration: 100 }
                             }
+
+                            Drag.active: compactAppCard.drag.active
+                            Drag.keys: ["appLauncherItem"]
+                            Drag.hotSpot.x: width / 2
+                            Drag.hotSpot.y: height / 2
+                            property string appName: appName
+
+                            states: [
+                                State {
+                                    name: "dragging"
+                                    when: compactAppCard.drag.active
+                                    ParentChange { target: compactContainerRect; parent: root }
+                                    AnchorChanges { target: compactContainerRect; anchors.horizontalCenter: undefined; anchors.verticalCenter: undefined }
+                                }
+                            ]
 
                             Row {
                                 anchors.fill: parent
