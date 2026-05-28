@@ -22,33 +22,9 @@ DesktopPluginComponent {
     property bool editMode: false
     
     // Dynamic settings properties
-    property real appSize: pluginData.appSize !== undefined ? pluginData.appSize : 88
+    readonly property real appSize: pluginData.appSize ?? 88
+    readonly property string viewMode: pluginData.viewMode ?? "grid"
     readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
-
-    // Connections to keep local properties in sync with pluginData settings
-    Connections {
-        target: pluginService ? pluginService : null
-        ignoreUnknownSignals: true
-        function onPluginDataChanged(id) {
-            if (id === pluginId) {
-                if (pluginData.appSize !== undefined) root.appSize = pluginData.appSize;
-            }
-        }
-    }
-
-    // Cycle grid sizes (64 -> 88 -> 112 -> 136)
-    function cycleAppSize() {
-        let nextSize = 88;
-        if (root.appSize === 88) nextSize = 112;
-        else if (root.appSize === 112) nextSize = 136;
-        else if (root.appSize === 136) nextSize = 64;
-        else nextSize = 88;
-
-        root.appSize = nextSize;
-        if (pluginService) {
-            pluginService.savePluginData(pluginId, "appSize", nextSize);
-        }
-    }
     
     // Load added apps from persistent settings
     property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
@@ -323,35 +299,7 @@ DesktopPluginComponent {
 
 
 
-                    // Cycle App Size Button
-                    MouseArea {
-                        id: cycleSizeBtn
-                        width: 24
-                        height: 24
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        onClicked: {
-                            root.cycleAppSize();
-                        }
 
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: cycleSizeBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
-                            border.color: Theme.withAlpha(Theme.outline, 0.15)
-                            border.width: 1
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "grid_view"
-                                size: 14
-                                color: Theme.surfaceText
-                                opacity: cycleSizeBtn.containsMouse ? 1.0 : 0.7
-                            }
-                        }
-                    }
                 }
             }
 
@@ -362,6 +310,7 @@ DesktopPluginComponent {
                 height: parent.height - 24 - Theme.spacingS * 2
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
+                visible: root.viewMode === "grid"
                 
                 cellWidth: Math.floor(width / Math.max(2, Math.floor(width / root.appSize)))
                 cellHeight: cellWidth
@@ -527,6 +476,278 @@ DesktopPluginComponent {
                                     name: "close"
                                     size: 10
                                     color: parent.parent.containsMouse ? Theme.onError : Theme.surfaceText
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apps List
+            ListView {
+                id: appsList
+                width: parent.width
+                height: parent.height - 24 - Theme.spacingS * 2
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                visible: root.viewMode === "list"
+                spacing: 2
+                model: filteredModel
+
+                // Smooth transitions
+                add: Transition {
+                    NumberAnimation { property: "opacity"; from: 0; to: 1.0; duration: 200 }
+                }
+                remove: Transition {
+                    NumberAnimation { property: "opacity"; to: 0; duration: 150 }
+                }
+
+                delegate: Item {
+                    id: listDelegateRoot
+                    width: appsList.width
+                    height: Math.round(36 * (root.appSize / 88.0))
+
+                    MouseArea {
+                        id: listAppCard
+                        anchors.fill: parent
+                        anchors.leftMargin: Theme.spacingXS
+                        anchors.rightMargin: Theme.spacingXS
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onClicked: {
+                            listClickLaunchAnimation.start();
+                            Quickshell.execDetached(["sh", "-c", appExec]);
+                        }
+
+                        Rectangle {
+                            id: listContainerRect
+                            anchors.fill: parent
+                            radius: Math.round(Theme.cornerRadius / 2)
+                            color: listAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
+                            border.color: listAppCard.containsMouse ? Theme.primary : "transparent"
+                            border.width: listAppCard.containsMouse ? 1 : 0
+
+                            SequentialAnimation {
+                                id: listClickLaunchAnimation
+                                NumberAnimation { target: listContainerRect; property: "scale"; to: 0.98; duration: 60 }
+                                NumberAnimation { target: listContainerRect; property: "scale"; to: 1.0; duration: 100 }
+                            }
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacingS
+                                anchors.rightMargin: Theme.spacingS
+                                spacing: Theme.spacingS
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                // Icon
+                                Item {
+                                    width: Math.round(20 * (root.appSize / 88.0))
+                                    height: width
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    Image {
+                                        id: listAppImage
+                                        anchors.fill: parent
+                                        source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                        fillMode: Image.PreserveAspectFit
+                                        visible: appIcon !== ""
+
+                                        onStatusChanged: {
+                                            if (status == Image.Error) {
+                                                listFallbackIcon.visible = true;
+                                                listAppImage.visible = false;
+                                            }
+                                        }
+                                    }
+
+                                    DankIcon {
+                                        id: listFallbackIcon
+                                        anchors.fill: parent
+                                        name: "extension"
+                                        size: parent.width
+                                        color: Theme.surfaceText
+                                        visible: appIcon === "" || !listAppImage.visible
+                                    }
+                                }
+
+                                // App Name
+                                StyledText {
+                                    text: appName
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.surfaceText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    elide: Text.ElideRight
+                                    width: parent.width - parent.spacing - Math.round(20 * (root.appSize / 88.0)) - (root.editMode ? 24 : 0)
+                                }
+                            }
+
+                            // Remove App Button
+                            MouseArea {
+                                width: 16
+                                height: 16
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.spacingS
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: root.editMode
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                
+                                onClicked: {
+                                    root.removeApp(appName);
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 8
+                                    color: parent.containsMouse ? Theme.error : Theme.surfaceContainerHigh
+                                    border.color: Theme.outline
+                                    border.width: 1
+
+                                    DankIcon {
+                                        anchors.centerIn: parent
+                                        name: "close"
+                                        size: 10
+                                        color: parent.parent.containsMouse ? Theme.onError : Theme.surfaceText
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apps Compact
+            GridView {
+                id: appsCompact
+                width: parent.width
+                height: parent.height - 24 - Theme.spacingS * 2
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                visible: root.viewMode === "compact"
+                
+                cellWidth: parent.width > 280 ? parent.width / 2 : parent.width
+                cellHeight: Math.round(30 * (root.appSize / 88.0))
+                model: filteredModel
+
+                // Smooth transitions
+                add: Transition {
+                    NumberAnimation { properties: "opacity,scale"; from: 0; to: 1.0; duration: 200 }
+                }
+                remove: Transition {
+                    NumberAnimation { properties: "opacity,scale"; to: 0; duration: 150 }
+                }
+
+                delegate: Item {
+                    id: compactDelegateRoot
+                    width: appsCompact.cellWidth
+                    height: appsCompact.cellHeight
+
+                    MouseArea {
+                        id: compactAppCard
+                        anchors.fill: parent
+                        anchors.leftMargin: Theme.spacingXS
+                        anchors.rightMargin: Theme.spacingXS
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onClicked: {
+                            compactClickLaunchAnimation.start();
+                            Quickshell.execDetached(["sh", "-c", appExec]);
+                        }
+
+                        Rectangle {
+                            id: compactContainerRect
+                            anchors.fill: parent
+                            radius: Math.round(Theme.cornerRadius / 2)
+                            color: compactAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
+                            border.color: compactAppCard.containsMouse ? Theme.primary : "transparent"
+                            border.width: compactAppCard.containsMouse ? 1 : 0
+
+                            SequentialAnimation {
+                                id: compactClickLaunchAnimation
+                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 0.98; duration: 60 }
+                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.0; duration: 100 }
+                            }
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacingS
+                                anchors.rightMargin: Theme.spacingS
+                                spacing: Theme.spacingS
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                // Icon
+                                Item {
+                                    width: Math.round(16 * (root.appSize / 88.0))
+                                    height: width
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    Image {
+                                        id: compactAppImage
+                                        anchors.fill: parent
+                                        source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                        fillMode: Image.PreserveAspectFit
+                                        visible: appIcon !== ""
+
+                                        onStatusChanged: {
+                                            if (status == Image.Error) {
+                                                compactFallbackIcon.visible = true;
+                                                compactAppImage.visible = false;
+                                            }
+                                        }
+                                    }
+
+                                    DankIcon {
+                                        id: compactFallbackIcon
+                                        anchors.fill: parent
+                                        name: "extension"
+                                        size: parent.width
+                                        color: Theme.surfaceText
+                                        visible: appIcon === "" || !compactAppImage.visible
+                                    }
+                                }
+
+                                // App Name
+                                StyledText {
+                                    text: appName
+                                    font.pixelSize: Theme.fontSizeSmall - 1
+                                    color: Theme.surfaceText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    elide: Text.ElideRight
+                                    width: parent.width - parent.spacing - Math.round(16 * (root.appSize / 88.0)) - (root.editMode ? 24 : 0)
+                                }
+                            }
+
+                            // Remove App Button
+                            MouseArea {
+                                width: 16
+                                height: 16
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.spacingS
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: root.editMode
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                
+                                onClicked: {
+                                    root.removeApp(appName);
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 8
+                                    color: parent.containsMouse ? Theme.error : Theme.surfaceContainerHigh
+                                    border.color: Theme.outline
+                                    border.width: 1
+
+                                    DankIcon {
+                                        anchors.centerIn: parent
+                                        name: "close"
+                                        size: 10
+                                        color: parent.parent.containsMouse ? Theme.onError : Theme.surfaceText
+                                    }
                                 }
                             }
                         }

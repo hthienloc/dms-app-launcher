@@ -31,11 +31,24 @@ PluginSettings {
 
         SliderSetting {
             settingKey: "appSize"
-            label: I18n.tr("App Sizing Reference")
+            label: I18n.tr("App Icon Size")
+            description: I18n.tr("Adjust the size of application launcher items.")
             defaultValue: 88
             minimum: 64
             maximum: 128
             unit: "px"
+        }
+
+        SelectionSetting {
+            settingKey: "viewMode"
+            label: I18n.tr("View Mode")
+            description: I18n.tr("Choose how applications are displayed.")
+            options: [
+                { label: I18n.tr("Grid View"), value: "grid" },
+                { label: I18n.tr("List View"), value: "list" },
+                { label: I18n.tr("Compact View"), value: "compact" }
+            ]
+            defaultValue: "grid"
         }
     }
 }
