@@ -24,6 +24,7 @@ DesktopPluginComponent {
     // Dynamic settings properties
     readonly property real appSize: pluginData.appSize ?? 88
     readonly property string viewMode: pluginData.viewMode ?? "grid"
+    readonly property bool showHeader: pluginData.showHeader ?? true
     readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
     
     // Load added apps from persistent settings
@@ -113,12 +114,13 @@ DesktopPluginComponent {
         Column {
             anchors.fill: parent
             anchors.margins: Theme.spacingM
-            spacing: Theme.spacingS
+            spacing: root.showHeader ? Theme.spacingS : 0
 
             // Top: Header with Title, Expandable Search and Add Button
             Item {
                 width: parent.width
-                height: 24
+                height: root.showHeader ? 24 : 0
+                visible: root.showHeader
 
                 // Title
                 StyledText {
@@ -307,7 +309,7 @@ DesktopPluginComponent {
             GridView {
                 id: appsGrid
                 width: parent.width
-                height: parent.height - 24 - Theme.spacingS * 2
+                height: parent.height - (root.showHeader ? (24 + Theme.spacingS * 2) : 0)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 visible: root.viewMode === "grid"
@@ -487,7 +489,7 @@ DesktopPluginComponent {
             ListView {
                 id: appsList
                 width: parent.width
-                height: parent.height - 24 - Theme.spacingS * 2
+                height: parent.height - (root.showHeader ? (24 + Theme.spacingS * 2) : 0)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 visible: root.viewMode === "list"
@@ -622,7 +624,7 @@ DesktopPluginComponent {
             GridView {
                 id: appsCompact
                 width: parent.width
-                height: parent.height - 24 - Theme.spacingS * 2
+                height: parent.height - (root.showHeader ? (24 + Theme.spacingS * 2) : 0)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 visible: root.viewMode === "compact"

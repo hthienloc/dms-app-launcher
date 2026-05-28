@@ -50,5 +50,12 @@ PluginSettings {
             ]
             defaultValue: "grid"
         }
+
+        ToggleSetting {
+            settingKey: "showHeader"
+            label: I18n.tr("Show Launcher Header")
+            description: I18n.tr("Show a top header bar with title and search.")
+            defaultValue: true
+        }
     }
 }
