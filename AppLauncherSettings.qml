@@ -2,14 +2,14 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
-import "../dms-common"
+import "./dms-common"
 
 PluginSettings {
     id: root
     pluginId: "dmsAppLauncher"
 
     SettingsCard {
-        SectionTitle { text: I18n.tr("Launcher Options") }
+        SectionTitle { text: I18n.tr("Launcher Options"); icon: "apps" }
 
         SliderSetting {
             settingKey: "widgetWidth"
@@ -66,5 +66,9 @@ PluginSettings {
             description: I18n.tr("Show a top header bar with title and search.")
             defaultValue: true
         }
+    }
+
+    PluginAbout {
+        repoUrl: "https://github.com/hthienloc/dms-app-launcher"
     }
 }
