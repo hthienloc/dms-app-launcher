@@ -34,9 +34,7 @@ git clone https://github.com/hthienloc/dms-app-launcher ~/.config/DankMaterialSh
 | Left Click Grid Icon | Cycle app icon grid size (Small, Medium, Large, Very Large) |
 | Left Click Close `x` | Remove application shortcut (in Edit Mode) |
 
-## Requirements
 
-- `python3` - Required for background system application scanning.
 
 ## License
 

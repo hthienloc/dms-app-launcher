@@ -738,22 +738,21 @@ DesktopPluginComponent {
                 systemSearchField.forceActiveFocus();
             }
             
-            const homePath = Quickshell.env("HOME");
-            const scriptPath = homePath + "/.config/DankMaterialShell/plugins/dmsAppLauncher/scan_apps.py";
-            
-            Proc.runCommand(
-                "dmsAppLauncher.scanSystem",
-                [scriptPath],
-                (stdout, exitCode) => {
-                    if (exitCode === 0) {
-                        try {
-                            systemAppsList = JSON.parse(stdout);
-                        } catch (e) {
-                            console.log("Error parsing system apps: " + e);
-                        }
-                    }
+            // Fetch all apps directly from Quickshell's DesktopEntries singleton
+            const allEntries = DesktopEntries.applications.values;
+            let apps = [];
+            for (let i = 0; i < allEntries.length; i++) {
+                const app = allEntries[i];
+                if (app && !app.noDisplay) {
+                    apps.push({
+                        name: app.name || "",
+                        exec: app.execString || (app.command ? app.command.join(" ") : ""),
+                        icon: app.icon || ""
+                    });
                 }
-            );
+            }
+            apps.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            systemAppsList = apps;
         }
 
         function close() {
