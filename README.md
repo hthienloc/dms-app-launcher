@@ -8,12 +8,12 @@ An application launcher widget for DankMaterialShell (DMS) to search and launch 
 
 Use the DMS CLI:
 ```bash
-dms plugins install app-launcher
+dms plugins install appLauncher
 ```
 
 Or manually:
 ```bash
-git clone https://github.com/hthienloc/dms-app-launcher ~/.config/DankMaterialShell/plugins/app-launcher
+git clone https://github.com/hthienloc/dms-app-launcher ~/.config/DankMaterialShell/plugins/appLauncher
 ```
 
 ## Features
