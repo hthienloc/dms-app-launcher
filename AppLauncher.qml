@@ -53,7 +53,7 @@ DesktopPluginComponent {
                     appName: app.name,
                     appIcon: app.icon,
                     appExec: app.exec,
-                    appCategories: app.categories
+                    appCategories: app.categories || []
                 });
             }
         }
