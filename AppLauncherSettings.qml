@@ -89,7 +89,7 @@ PluginSettings {
 
         Separator {}
 
-        SelectionSettingPlus {
+        ButtonGroupSettingPlus {
             id: viewMode
             settingKey: "viewMode"
             label: I18n.tr("View Mode")
