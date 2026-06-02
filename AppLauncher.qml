@@ -12,6 +12,13 @@ DesktopPluginComponent {
     // Accepts keyboard focus permanently to support text inputs on Wayland
     property bool acceptsKeyboardFocus: true
 
+    function cleanExec(execStr) {
+        if (!execStr) return "";
+        let clean = execStr.replace(/["']?%[fFuUickdnNvVm]["']?/g, "");
+        clean = clean.replace(/%%/g, "%");
+        return clean.trim();
+    }
+
     // Desktop widget dimensions
     minWidth: 240
     minHeight: 320
@@ -363,7 +370,7 @@ DesktopPluginComponent {
 
                         onClicked: {
                             clickLaunchAnimation.start();
-                            Quickshell.execDetached(["sh", "-c", appExec]);
+                            Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
                         }
 
                         // Premium Tighter Icon Container with Primary Border on Hover
@@ -511,7 +518,7 @@ DesktopPluginComponent {
 
                         onClicked: {
                             listClickLaunchAnimation.start();
-                            Quickshell.execDetached(["sh", "-c", appExec]);
+                            Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
                         }
 
                         Rectangle {
@@ -619,7 +626,7 @@ DesktopPluginComponent {
 
                         onClicked: {
                             compactClickLaunchAnimation.start();
-                            Quickshell.execDetached(["sh", "-c", appExec]);
+                            Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
                         }
 
                         Rectangle {
@@ -746,7 +753,7 @@ DesktopPluginComponent {
                 if (app && !app.noDisplay) {
                     apps.push({
                         name: app.name || "",
-                        exec: app.execString || (app.command ? app.command.join(" ") : ""),
+                        exec: cleanExec(app.execString || (app.command ? app.command.join(" ") : "")),
                         icon: app.icon || ""
                     });
                 }
