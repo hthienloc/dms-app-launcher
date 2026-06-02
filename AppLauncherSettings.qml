@@ -114,7 +114,8 @@ PluginSettings {
             expanded: usageTitle.isExpanded
             items: [
                 I18n.tr("<b>Left-click</b> an app icon to launch it."),
-                I18n.tr("<b>Right-click</b> an app to view actions or pin it."),
+                I18n.tr("<b>Left-click</b> a group to expand its contents."),
+                I18n.tr("<b>Middle-click</b> a group to <b>launch all</b> contained apps."),
                 I18n.tr("<b>Middle-click</b> the background to <b>add or manage</b> applications."),
                 I18n.tr("<b>Resize</b> the launcher window directly from the corners.")
             ]

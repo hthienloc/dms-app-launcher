@@ -29,6 +29,9 @@ DesktopPluginComponent {
     property string searchQuery: ""
     property bool editMode: false
     
+    // Group navigation state
+    property int activeGroupIndex: -1 // Index of the Start Marker in addedApps
+
     // Dynamic settings properties
     readonly property real appSize: pluginData.appSize ?? 88
     readonly property string viewMode: pluginData.viewMode ?? "grid"
@@ -36,42 +39,97 @@ DesktopPluginComponent {
     readonly property real backgroundOpacity: (pluginData.backgroundOpacity ?? 80) / 100
     readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
     
-    // Load added apps from persistent settings
+    // Flat persistent list of apps and markers
     property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
-    property var allAppsList: addedApps
 
-    // ListModel for active filtered apps
+    // ListModel for active filtered apps (Dynamic View)
     ListModel {
         id: filteredModel
     }
 
-    // Filter addedApps based on search query
+    // Process the flat list into the current view
     function updateFilteredModel() {
         filteredModel.clear();
         const search = searchQuery.toLowerCase().trim();
-
-        for (let app of allAppsList) {
-            const matchesSearch = search === "" || 
-                                  app.name.toLowerCase().indexOf(search) !== -1 ||
-                                  (app.exec && app.exec.toLowerCase().indexOf(search) !== -1);
-
-            if (matchesSearch) {
-                filteredModel.append({
-                    appName: app.name,
-                    appIcon: app.icon,
-                    appExec: app.exec,
-                    appCategories: app.categories || []
-                });
+        
+        if (activeGroupIndex === -1) {
+            // Root View: Show standalone apps and Group Tiles
+            for (let i = 0; i < addedApps.length; i++) {
+                const item = addedApps[i];
+                if (item.isGroup) {
+                    // It's a Group Start Marker. Find apps until next separator.
+                    let groupApps = [];
+                    let j = i + 1;
+                    while (j < addedApps.length && !addedApps[j].isSeparator) {
+                        if (!addedApps[j].isGroup) groupApps.push(addedApps[j]);
+                        j++;
+                    }
+                    
+                    // Always show group tile in root unless searching (groups filter by content then)
+                    const matchesSearch = search === "" || 
+                                          item.name.toLowerCase().indexOf(search) !== -1 ||
+                                          groupApps.some(a => a.name.toLowerCase().indexOf(search) !== -1);
+                                          
+                    if (matchesSearch) {
+                        filteredModel.append({
+                            appName: item.name,
+                            appIcon: "", // Groups use mini-grid
+                            appExec: "",
+                            isGroup: true,
+                            originalIndex: i,
+                            groupApps: groupApps
+                        });
+                    }
+                    
+                    // Skip the items we just bundled into the group
+                    i = j; 
+                } else if (!item.isSeparator) {
+                    // Standalone App
+                    const matchesSearch = search === "" || 
+                                          item.name.toLowerCase().indexOf(search) !== -1 ||
+                                          (item.exec && item.exec.toLowerCase().indexOf(search) !== -1);
+                    if (matchesSearch) {
+                        filteredModel.append({
+                            appName: item.name,
+                            appIcon: item.icon || "",
+                            appExec: item.exec || "",
+                            isGroup: false,
+                            originalIndex: i,
+                            groupApps: []
+                        });
+                    }
+                }
+            }
+        } else {
+            // Inside Group View: Show only apps in the range
+            let i = activeGroupIndex + 1;
+            while (i < addedApps.length && !addedApps[i].isSeparator) {
+                const item = addedApps[i];
+                if (!item.isGroup) {
+                    const matchesSearch = search === "" || 
+                                          item.name.toLowerCase().indexOf(search) !== -1 ||
+                                          (item.exec && item.exec.toLowerCase().indexOf(search) !== -1);
+                    if (matchesSearch) {
+                        filteredModel.append({
+                            appName: item.name,
+                            appIcon: item.icon || "",
+                            appExec: item.exec || "",
+                            isGroup: false,
+                            originalIndex: i,
+                            groupApps: []
+                        });
+                    }
+                }
+                i++;
             }
         }
     }
 
     onSearchQueryChanged: updateFilteredModel()
-    onAllAppsListChanged: updateFilteredModel()
+    onAddedAppsChanged: updateFilteredModel()
+    onActiveGroupIndexChanged: updateFilteredModel()
 
-    Component.onCompleted: {
-        updateFilteredModel();
-    }
+    Component.onCompleted: updateFilteredModel()
 
     // Persist dimensions when resized
     onWidgetWidthChanged: {
@@ -86,7 +144,7 @@ DesktopPluginComponent {
         }
     }
 
-    // Save added apps to persistent settings
+    // Save flat list to persistent settings
     function saveAddedApps(newList) {
         if (pluginService) {
             pluginService.savePluginData(pluginId, "addedApps", newList);
@@ -94,21 +152,54 @@ DesktopPluginComponent {
         root.addedApps = newList;
     }
 
-    // Add app to the grid
+    // Add app to the flat list (respects active group context)
     function addApp(app) {
         let list = [...root.addedApps];
-        // Prevent duplicates
-        if (!list.some(a => a.name === app.name)) {
-            list.push(app);
-            saveAddedApps(list);
+        if (list.some(a => a.name === app.name)) return;
+        
+        const newApp = {
+            name: app.name,
+            icon: app.icon,
+            exec: app.exec
+        };
+
+        if (activeGroupIndex !== -1) {
+            // Find the separator for the current active group
+            let j = activeGroupIndex + 1;
+            while (j < list.length && !list[j].isSeparator) j++;
+            
+            // Insert before the separator
+            list.splice(j, 0, newApp);
+        } else {
+            // Add to the global end
+            list.push(newApp);
         }
+        saveAddedApps(list);
     }
 
-    // Remove app from the grid
-    function removeApp(appName) {
+    // Create a new range
+    function createGroup(groupName) {
         let list = [...root.addedApps];
-        list = list.filter(a => a.name !== appName);
+        list.push({
+            isGroup: true,
+            name: groupName || I18n.tr("New Group")
+        });
+        list.push({ isSeparator: true });
         saveAddedApps(list);
+    }
+
+    function removeApp(index) {
+        let list = [...root.addedApps];
+        if (index >= 0 && index < list.length) {
+            if (list[index].isGroup) {
+                // Remove group marker AND its matching separator
+                let j = index + 1;
+                while (j < list.length && !list[j].isSeparator) j++;
+                if (j < list.length) list.splice(j, 1);
+            }
+            list.splice(index, 1);
+            saveAddedApps(list);
+        }
     }
 
     function moveAppUp(index) {
@@ -131,6 +222,72 @@ DesktopPluginComponent {
         }
     }
 
+    function renameGroup(index, newName) {
+        let list = [...root.addedApps];
+        if (index >= 0 && index < list.length && list[index].isGroup) {
+            list[index].name = newName || I18n.tr("Untitled Group");
+            saveAddedApps(list);
+        }
+    }
+
+    // Component for iOS-style Group Icon (Grid Mode - 2x2)
+    Component {
+        id: groupGridIconComponent
+        Item {
+            property var groupApps: []
+            width: root.iconSize
+            height: root.iconSize
+            anchors.centerIn: parent
+
+            Grid {
+                anchors.fill: parent
+                columns: 2
+                spacing: 2
+                Repeater {
+                    model: groupApps
+                    delegate: Item {
+                        width: (parent.width - 2) / 2
+                        height: width
+                        visible: index < 4
+                        Image {
+                            anchors.fill: parent
+                            source: icon ? Quickshell.iconPath(icon) : ""
+                            fillMode: Image.PreserveAspectFit
+                            opacity: 0.9
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Component for Group Icon in List/Compact Mode (Row of icons)
+    Component {
+        id: groupListIconComponent
+        Item {
+            property var groupApps: []
+            width: parent.width
+            height: parent.height
+            anchors.verticalCenter: parent.verticalCenter
+            Row {
+                anchors.centerIn: parent
+                spacing: -Math.round(parent.width * 0.2) // Overlap icons
+                Repeater {
+                    model: groupApps
+                    delegate: Image {
+                        width: parent.height
+                        height: width
+                        visible: index < 3
+                        source: icon ? Quickshell.iconPath(icon) : ""
+                        fillMode: Image.PreserveAspectFit
+                        opacity: 0.9
+                        z: 10 - index
+                    }
+                }
+            }
+        }
+    }
+
     // Glassmorphic Premium Background
     Rectangle {
         anchors.fill: parent
@@ -145,7 +302,7 @@ DesktopPluginComponent {
             acceptedButtons: Qt.MiddleButton
             onClicked: (mouse) => {
                 if (mouse.button === Qt.MiddleButton) {
-                    addAppDialog.openDialog("manage");
+                    addAppDialog.openDialog();
                 }
             }
         }
@@ -153,21 +310,46 @@ DesktopPluginComponent {
         Column {
             anchors.fill: parent
             anchors.margins: Theme.spacingM
-            spacing: root.showHeader ? Theme.spacingS : 0
+            spacing: (root.showHeader || root.activeGroupIndex !== -1) ? Theme.spacingS : 0
 
             // Top: Header with Title and Expandable Search
             Item {
                 width: parent.width
-                height: root.showHeader ? 24 : 0
-                visible: root.showHeader
+                height: (root.showHeader || root.activeGroupIndex !== -1) ? 24 : 0
+                visible: height > 0
+
+                // Back Button (Only visible inside group)
+                MouseArea {
+                    id: backBtn
+                    width: 24
+                    height: 24
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.activeGroupIndex !== -1
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.activeGroupIndex = -1;
+                        root.searchQuery = "";
+                    }
+
+                    DankIcon {
+                        anchors.centerIn: parent
+                        name: "arrow_back"
+                        size: 18
+                        color: Theme.surfaceText
+                        opacity: backBtn.containsMouse ? 1.0 : 0.7
+                    }
+                }
 
                 // Title
                 StyledText {
-                    text: I18n.tr("Applications")
+                    text: root.activeGroupIndex !== -1 ? root.addedApps[root.activeGroupIndex].name : I18n.tr("Applications")
                     font.bold: true
                     font.pixelSize: Theme.fontSizeMedium
                     color: Theme.surfaceText
-                    anchors.left: parent.left
+                    anchors.left: root.activeGroupIndex !== -1 ? backBtn.right : parent.left
+                    anchors.leftMargin: root.activeGroupIndex !== -1 ? Theme.spacingS : 0
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !searchContainer.expanded
                 }
@@ -284,7 +466,7 @@ DesktopPluginComponent {
             GridView {
                 id: appsGrid
                 width: parent.width
-                height: parent.height - (root.showHeader ? (24 + Theme.spacingS * 2) : 0)
+                height: parent.height - ((root.showHeader || root.activeGroupIndex !== -1) ? (24 + Theme.spacingS * 2) : 0)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 visible: root.viewMode === "grid"
@@ -306,6 +488,7 @@ DesktopPluginComponent {
                     id: delegateRoot
                     width: appsGrid.cellWidth
                     height: appsGrid.cellHeight
+                    readonly property var currentGroupApps: model.groupApps
 
                     MouseArea {
                         id: appCard
@@ -313,10 +496,23 @@ DesktopPluginComponent {
                         anchors.margins: 4
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-                        onClicked: {
-                            clickLaunchAnimation.start();
-                            Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
+                        onClicked: (mouse) => {
+                            if (isGroup) {
+                                if (mouse.button === Qt.MiddleButton) {
+                                    // Launch all apps in group
+                                    for (let i = 0; i < model.groupApps.count; i++) {
+                                        Quickshell.execDetached(["sh", "-c", cleanExec(model.groupApps.get(i).exec)]);
+                                    }
+                                } else {
+                                    root.searchQuery = "";
+                                    root.activeGroupIndex = originalIndex;
+                                }
+                            } else {
+                                clickLaunchAnimation.start();
+                                Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
+                            }
                         }
 
                         // Premium Tighter Icon Container with Primary Border on Hover
@@ -395,22 +591,37 @@ DesktopPluginComponent {
                                 height: root.iconSize
                                 anchors.centerIn: parent
                                 
-                                Image {
-                                    id: appImage
+                                Loader {
+                                    id: gridIconLoader
                                     anchors.fill: parent
-                                    source: appIcon ? Quickshell.iconPath(appIcon) : ""
-                                    fillMode: Image.PreserveAspectFit
-                                    scale: appCard.containsMouse ? 1.08 : 1.0
-                                    visible: appIcon !== ""
-                                    
-                                    Behavior on scale {
-                                        NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                                    sourceComponent: isGroup ? groupGridIconComponent : appIconLoader
+                                    visible: !isGroup || delegateRoot.currentGroupApps.length > 0
+                                    onLoaded: {
+                                        if (isGroup && item) {
+                                            item.groupApps = delegateRoot.currentGroupApps;
+                                        }
                                     }
+                                }
 
-                                    onStatusChanged: {
-                                        if (status == Image.Error) {
-                                            fallbackIcon.visible = true;
-                                            appImage.visible = false;
+                                Component {
+                                    id: appIconLoader
+                                    Image {
+                                        id: appImage
+                                        anchors.fill: parent
+                                        source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                        fillMode: Image.PreserveAspectFit
+                                        scale: appCard.containsMouse ? 1.08 : 1.0
+                                        visible: appIcon !== ""
+                                        
+                                        Behavior on scale {
+                                            NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
+                                        }
+
+                                        onStatusChanged: {
+                                            if (status == Image.Error) {
+                                                fallbackIcon.visible = true;
+                                                appImage.visible = false;
+                                            }
                                         }
                                     }
                                 }
@@ -418,10 +629,10 @@ DesktopPluginComponent {
                                 DankIcon {
                                     id: fallbackIcon
                                     anchors.fill: parent
-                                    name: "extension"
+                                    name: isGroup ? "folder" : "extension"
                                     size: parent.width
                                     color: Theme.surfaceText
-                                    visible: appIcon === "" || !appImage.visible
+                                    visible: !isGroup ? (appIcon === "" || (typeof appImage !== "undefined" && !appImage.visible)) : delegateRoot.currentGroupApps.length === 0
                                     scale: appCard.containsMouse ? 1.08 : 1.0
                                 }
                             }
@@ -434,25 +645,18 @@ DesktopPluginComponent {
             ListView {
                 id: appsList
                 width: parent.width
-                height: parent.height - (root.showHeader ? (24 + Theme.spacingS * 2) : 0)
+                height: parent.height - ((root.showHeader || root.activeGroupIndex !== -1) ? (24 + Theme.spacingS * 2) : 0)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 visible: root.viewMode === "list"
                 spacing: 2
                 model: filteredModel
 
-                // Smooth transitions
-                add: Transition {
-                    NumberAnimation { property: "opacity"; from: 0; to: 1.0; duration: 200 }
-                }
-                remove: Transition {
-                    NumberAnimation { property: "opacity"; to: 0; duration: 150 }
-                }
-
                 delegate: Item {
                     id: listDelegateRoot
                     width: appsList.width
                     height: Math.round(36 * (root.appSize / 88.0))
+                    readonly property var currentGroupApps: model.groupApps
 
                     MouseArea {
                         id: listAppCard
@@ -461,10 +665,22 @@ DesktopPluginComponent {
                         anchors.rightMargin: Theme.spacingXS
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-                        onClicked: {
-                            listClickLaunchAnimation.start();
-                            Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
+                        onClicked: (mouse) => {
+                            if (isGroup) {
+                                if (mouse.button === Qt.MiddleButton) {
+                                    for (let i = 0; i < model.groupApps.count; i++) {
+                                        Quickshell.execDetached(["sh", "-c", cleanExec(model.groupApps.get(i).exec)]);
+                                    }
+                                } else {
+                                    root.searchQuery = "";
+                                    root.activeGroupIndex = originalIndex;
+                                }
+                            } else {
+                                listClickLaunchAnimation.start();
+                                Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
+                            }
                         }
 
                         Rectangle {
@@ -496,17 +712,32 @@ DesktopPluginComponent {
                                     height: width
                                     anchors.verticalCenter: parent.verticalCenter
 
-                                    Image {
-                                        id: listAppImage
+                                    Loader {
+                                        id: listIconLoader
                                         anchors.fill: parent
-                                        source: appIcon ? Quickshell.iconPath(appIcon) : ""
-                                        fillMode: Image.PreserveAspectFit
-                                        visible: appIcon !== ""
+                                        sourceComponent: isGroup ? groupListIconComponent : listAppIconLoader
+                                        visible: !isGroup || listDelegateRoot.currentGroupApps.length > 0
+                                        onLoaded: {
+                                            if (isGroup && item) {
+                                                item.groupApps = listDelegateRoot.currentGroupApps;
+                                            }
+                                        }
+                                    }
 
-                                        onStatusChanged: {
-                                            if (status == Image.Error) {
-                                                listFallbackIcon.visible = true;
-                                                listAppImage.visible = false;
+                                    Component {
+                                        id: listAppIconLoader
+                                        Image {
+                                            id: listAppImage
+                                            anchors.fill: parent
+                                            source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                            fillMode: Image.PreserveAspectFit
+                                            visible: appIcon !== ""
+
+                                            onStatusChanged: {
+                                                if (status == Image.Error) {
+                                                    listFallbackIcon.visible = true;
+                                                    listAppImage.visible = false;
+                                                }
                                             }
                                         }
                                     }
@@ -514,10 +745,10 @@ DesktopPluginComponent {
                                     DankIcon {
                                         id: listFallbackIcon
                                         anchors.fill: parent
-                                        name: "extension"
+                                        name: isGroup ? "folder" : "extension"
                                         size: parent.width
                                         color: Theme.surfaceText
-                                        visible: appIcon === "" || !listAppImage.visible
+                                        visible: !isGroup ? (appIcon === "" || (typeof listAppImage !== "undefined" && !listAppImage.visible)) : listDelegateRoot.currentGroupApps.length === 0
                                     }
                                 }
 
@@ -540,7 +771,7 @@ DesktopPluginComponent {
             GridView {
                 id: appsCompact
                 width: parent.width
-                height: parent.height - (root.showHeader ? (24 + Theme.spacingS * 2) : 0)
+                height: parent.height - ((root.showHeader || root.activeGroupIndex !== -1) ? (24 + Theme.spacingS * 2) : 0)
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 visible: root.viewMode === "compact"
@@ -549,18 +780,11 @@ DesktopPluginComponent {
                 cellHeight: Math.round(30 * (root.appSize / 88.0))
                 model: filteredModel
 
-                // Smooth transitions
-                add: Transition {
-                    NumberAnimation { properties: "opacity,scale"; from: 0; to: 1.0; duration: 200 }
-                }
-                remove: Transition {
-                    NumberAnimation { properties: "opacity,scale"; to: 0; duration: 150 }
-                }
-
                 delegate: Item {
                     id: compactDelegateRoot
                     width: appsCompact.cellWidth
                     height: appsCompact.cellHeight
+                    readonly property var currentGroupApps: model.groupApps
 
                     MouseArea {
                         id: compactAppCard
@@ -569,10 +793,22 @@ DesktopPluginComponent {
                         anchors.rightMargin: Theme.spacingXS
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-                        onClicked: {
-                            compactClickLaunchAnimation.start();
-                            Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
+                        onClicked: (mouse) => {
+                            if (isGroup) {
+                                if (mouse.button === Qt.MiddleButton) {
+                                    for (let i = 0; i < model.groupApps.count; i++) {
+                                        Quickshell.execDetached(["sh", "-c", cleanExec(model.groupApps.get(i).exec)]);
+                                    }
+                                } else {
+                                    root.searchQuery = "";
+                                    root.activeGroupIndex = originalIndex;
+                                }
+                            } else {
+                                compactClickLaunchAnimation.start();
+                                Quickshell.execDetached(["sh", "-c", cleanExec(appExec)]);
+                            }
                         }
 
                         Rectangle {
@@ -604,17 +840,32 @@ DesktopPluginComponent {
                                     height: width
                                     anchors.verticalCenter: parent.verticalCenter
 
-                                    Image {
-                                        id: compactAppImage
+                                    Loader {
+                                        id: compactIconLoader
                                         anchors.fill: parent
-                                        source: appIcon ? Quickshell.iconPath(appIcon) : ""
-                                        fillMode: Image.PreserveAspectFit
-                                        visible: appIcon !== ""
+                                        sourceComponent: isGroup ? groupListIconComponent : compactAppIconLoader
+                                        visible: !isGroup || compactDelegateRoot.currentGroupApps.length > 0
+                                        onLoaded: {
+                                            if (isGroup && item) {
+                                                item.groupApps = compactDelegateRoot.currentGroupApps;
+                                            }
+                                        }
+                                    }
 
-                                        onStatusChanged: {
-                                            if (status == Image.Error) {
-                                                compactFallbackIcon.visible = true;
-                                                compactAppImage.visible = false;
+                                    Component {
+                                        id: compactAppIconLoader
+                                        Image {
+                                            id: compactAppImage
+                                            anchors.fill: parent
+                                            source: appIcon ? Quickshell.iconPath(appIcon) : ""
+                                            fillMode: Image.PreserveAspectFit
+                                            visible: appIcon !== ""
+
+                                            onStatusChanged: {
+                                                if (status == Image.Error) {
+                                                    compactFallbackIcon.visible = true;
+                                                    compactAppImage.visible = false;
+                                                }
                                             }
                                         }
                                     }
@@ -622,10 +873,10 @@ DesktopPluginComponent {
                                     DankIcon {
                                         id: compactFallbackIcon
                                         anchors.fill: parent
-                                        name: "extension"
+                                        name: isGroup ? "folder" : "extension"
                                         size: parent.width
                                         color: Theme.surfaceText
-                                        visible: appIcon === "" || !compactAppImage.visible
+                                        visible: !isGroup ? (appIcon === "" || (typeof compactAppImage !== "undefined" && !compactAppImage.visible)) : compactDelegateRoot.currentGroupApps.length === 0
                                     }
                                 }
 
@@ -682,8 +933,7 @@ DesktopPluginComponent {
         }
 
         // Trigger scan only when user wants to add an app
-        function openDialog(tab) {
-            activeTab = tab !== undefined ? tab : "add";
+        function openDialog() {
             systemAppsSearch = "";
             systemSearchField.text = "";
             opened = true;
@@ -767,63 +1017,115 @@ DesktopPluginComponent {
                 }
 
                 // Tabs Segmented Control
-                Rectangle {
+                Row {
                     width: parent.width
+                    spacing: Theme.spacingS
                     height: 32
-                    radius: 16
-                    color: Theme.withAlpha(Theme.surfaceText, 0.05)
-                    border.color: Theme.withAlpha(Theme.outline, 0.1)
-                    border.width: 1
 
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: 2
+                    Rectangle {
+                        width: parent.width - 40
+                        height: 32
+                        radius: 16
+                        color: Theme.withAlpha(Theme.surfaceText, 0.05)
+                        border.color: Theme.withAlpha(Theme.outline, 0.1)
+                        border.width: 1
 
-                        // Tab 1: Add Apps
-                        MouseArea {
-                            id: tabAddBtn
-                            width: parent.width / 2
-                            height: parent.height
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: addAppDialog.activeTab = "add"
+                        Row {
+                            anchors.fill: parent
+                            anchors.margins: 2
 
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 14
-                                color: addAppDialog.activeTab === "add" ? Theme.primary : "transparent"
+                            // Tab 1: Add Apps
+                            MouseArea {
+                                id: tabAddBtn
+                                width: parent.width / 2
+                                height: parent.height
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: addAppDialog.activeTab = "add"
 
-                                StyledText {
-                                    anchors.centerIn: parent
-                                    text: I18n.tr("Add Apps")
-                                    font.bold: addAppDialog.activeTab === "add"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: addAppDialog.activeTab === "add" ? Theme.onPrimary : Theme.surfaceText
-                                    opacity: addAppDialog.activeTab === "add" ? 1.0 : (tabAddBtn.containsMouse ? 0.9 : 0.6)
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 14
+                                    color: addAppDialog.activeTab === "add" ? Theme.primary : "transparent"
+
+                                    StyledText {
+                                        anchors.centerIn: parent
+                                        text: I18n.tr("Add Apps")
+                                        font.bold: addAppDialog.activeTab === "add"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: addAppDialog.activeTab === "add" ? Theme.onPrimary : Theme.surfaceText
+                                        opacity: tabAddBtn.containsMouse ? 0.9 : 0.6
+                                        visible: addAppDialog.activeTab !== "add"
+                                    }
+                                    
+                                    StyledText {
+                                        anchors.centerIn: parent
+                                        text: I18n.tr("Add Apps")
+                                        font.bold: true
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.onPrimary
+                                        visible: addAppDialog.activeTab === "add"
+                                    }
+                                }
+                            }
+
+                            // Tab 2: Manage
+                            MouseArea {
+                                id: tabManageBtn
+                                width: parent.width / 2
+                                height: parent.height
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: addAppDialog.activeTab = "manage"
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 14
+                                    color: addAppDialog.activeTab === "manage" ? Theme.primary : "transparent"
+
+                                    StyledText {
+                                        anchors.centerIn: parent
+                                        text: I18n.tr("Manage")
+                                        font.bold: addAppDialog.activeTab === "manage"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: addAppDialog.activeTab === "manage" ? Theme.onPrimary : Theme.surfaceText
+                                        opacity: tabManageBtn.containsMouse ? 0.9 : 0.6
+                                        visible: addAppDialog.activeTab !== "manage"
+                                    }
+
+                                    StyledText {
+                                        anchors.centerIn: parent
+                                        text: I18n.tr("Manage")
+                                        font.bold: true
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.onPrimary
+                                        visible: addAppDialog.activeTab === "manage"
+                                    }
                                 }
                             }
                         }
+                    }
 
-                        // Tab 2: Manage
-                        MouseArea {
-                            id: tabManageBtn
-                            width: parent.width / 2
-                            height: parent.height
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: addAppDialog.activeTab = "manage"
+                    // Create Group Button
+                    MouseArea {
+                        id: createGroupBtn
+                        width: 32
+                        height: 32
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.createGroup(I18n.tr("New Group"))
 
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: 14
-                                color: addAppDialog.activeTab === "manage" ? Theme.primary : "transparent"
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 16
+                            color: createGroupBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
+                            border.color: Theme.withAlpha(Theme.outline, 0.15)
+                            border.width: 1
 
-                                StyledText {
-                                    anchors.centerIn: parent
-                                    text: I18n.tr("Manage")
-                                    font.bold: addAppDialog.activeTab === "manage"
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: addAppDialog.activeTab === "manage" ? Theme.onPrimary : Theme.surfaceText
-                                    opacity: addAppDialog.activeTab === "manage" ? 1.0 : (tabManageBtn.containsMouse ? 0.9 : 0.6)
-                                }
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "create_new_folder"
+                                size: 16
+                                color: Theme.surfaceText
+                                opacity: createGroupBtn.containsMouse ? 1.0 : 0.6
                             }
                         }
                     }
@@ -977,7 +1279,14 @@ DesktopPluginComponent {
                             
                             onClicked: {
                                 if (parent.isAdded) {
-                                    root.removeApp(modelData.name);
+                                    // Find index of app to remove
+                                    let idx = -1;
+                                    for (let k = 0; k < root.addedApps.length; k++) {
+                                        if (root.addedApps[k].name === modelData.name) {
+                                            idx = k; break;
+                                        }
+                                    }
+                                    if (idx !== -1) root.removeApp(idx);
                                 } else {
                                     root.addApp(modelData);
                                 }
@@ -1017,6 +1326,23 @@ DesktopPluginComponent {
                             anchors.verticalCenter: parent.verticalCenter
 
                             // Icon
+                            DankIcon {
+                                name: !!modelData.isGroup ? "folder" : ""
+                                size: 24
+                                color: Theme.primary
+                                visible: !!modelData.isGroup
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            
+                            DankIcon {
+                                name: !!modelData.isSeparator ? "vertical_align_center" : ""
+                                size: 18
+                                color: Theme.surfaceVariantText
+                                visible: !!modelData.isSeparator
+                                rotation: 90
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
                             Image {
                                 id: manageIcon
                                 width: 24
@@ -1024,6 +1350,7 @@ DesktopPluginComponent {
                                 source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""
                                 fillMode: Image.PreserveAspectFit
                                 anchors.verticalCenter: parent.verticalCenter
+                                visible: !modelData.isGroup && !modelData.isSeparator
 
                                 onStatusChanged: {
                                     if (status == Image.Error) {
@@ -1040,18 +1367,26 @@ DesktopPluginComponent {
                                 name: "extension"
                                 size: 24
                                 color: Theme.surfaceText
-                                visible: !modelData.icon || !manageIcon.visible
+                                visible: !modelData.isGroup && !modelData.isSeparator && (!modelData.icon || !manageIcon.visible)
                                 anchors.verticalCenter: parent.verticalCenter
                             }
 
                             // App Name
                             StyledText {
-                                text: modelData.name
+                                text: !!modelData.isSeparator ? "──────────" : modelData.name
                                 font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceText
+                                font.italic: !!modelData.isSeparator
+                                color: !!modelData.isSeparator ? Theme.surfaceVariantText : Theme.surfaceText
                                 elide: Text.ElideRight
                                 width: parent.width - 24 - 72 - Theme.spacingS * 3
                                 anchors.verticalCenter: parent.verticalCenter
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    visible: !!modelData.isGroup
+                                    cursorShape: Qt.IBeamCursor
+                                    onClicked: renameGroup(index, prompt(I18n.tr("New name:"), text))
+                                }
                             }
 
                             // Action buttons row (Up, Down, Delete)
@@ -1111,7 +1446,7 @@ DesktopPluginComponent {
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        root.removeApp(modelData.name);
+                                        root.removeApp(index);
                                     }
 
                                     DankIcon {

@@ -27,8 +27,10 @@ git clone https://github.com/hthienloc/dms-app-launcher ~/.config/DankMaterialSh
 | Action | Result |
 |--------|--------|
 | Left Click App Icon | Launch application with tactile feedback |
-| Middle Click Background | Open in-widget manager to add or remove shortcuts |
-| Right Click App Icon | Open context menu (if supported) |
+| Left Click Group | Expand group to view apps inside |
+| Middle Click Group | **Launch all** apps within the group simultaneously |
+| Middle Click Background | Open in-widget manager to add, group, or remove shortcuts |
+| Search Bar | Type to filter applications instantly (supports group navigation) |
 
 
 
