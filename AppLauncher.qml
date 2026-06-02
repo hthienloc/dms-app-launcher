@@ -32,7 +32,7 @@ DesktopPluginComponent {
     // Dynamic settings properties
     readonly property real appSize: pluginData.appSize ?? 88
     readonly property string viewMode: pluginData.viewMode ?? "grid"
-    readonly property bool showHeader: pluginData.showHeader ?? true
+    readonly property bool showHeader: false
     readonly property real backgroundOpacity: (pluginData.backgroundOpacity ?? 80) / 100
     readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
     
@@ -140,12 +140,22 @@ DesktopPluginComponent {
         border.width: root.editMode ? 2 : 1
         clip: true
 
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.MiddleButton
+            onClicked: (mouse) => {
+                if (mouse.button === Qt.MiddleButton) {
+                    addAppDialog.openDialog("manage");
+                }
+            }
+        }
+
         Column {
             anchors.fill: parent
             anchors.margins: Theme.spacingM
             spacing: root.showHeader ? Theme.spacingS : 0
 
-            // Top: Header with Title, Expandable Search and Add Button
+            // Top: Header with Title and Expandable Search
             Item {
                 width: parent.width
                 height: root.showHeader ? 24 : 0
@@ -162,7 +172,7 @@ DesktopPluginComponent {
                     visible: !searchContainer.expanded
                 }
 
-                // Controls Row (Search and Add App Button)
+                // Controls Row (Search)
                 Row {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -173,7 +183,7 @@ DesktopPluginComponent {
                     Rectangle {
                         id: searchContainer
                         property bool expanded: false
-                        width: expanded ? Math.min(200, root.width - Theme.spacingM * 2 - 40) : 24
+                        width: expanded ? Math.min(200, root.width - Theme.spacingM * 2) : 24
                         height: 24
                         radius: 12
                         color: expanded ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
@@ -267,70 +277,6 @@ DesktopPluginComponent {
                             }
                         }
                     }
-
-                    // Add App Button
-                    MouseArea {
-                        id: addBtn
-                        width: 24
-                        height: 24
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        onClicked: {
-                            addAppDialog.openDialog("add");
-                        }
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: addBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
-                            border.color: Theme.withAlpha(Theme.outline, 0.15)
-                            border.width: 1
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "add"
-                                size: 14
-                                color: Theme.surfaceText
-                                opacity: addBtn.containsMouse ? 1.0 : 0.7
-                            }
-                        }
-                    }
-                    
-                    // Edit/Manage Button
-                    MouseArea {
-                        id: editBtn
-                        width: 24
-                        height: 24
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        anchors.verticalCenter: parent.verticalCenter
-                        
-                        onClicked: {
-                            addAppDialog.openDialog("manage");
-                        }
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: editBtn.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.08) : Theme.withAlpha(Theme.surfaceText, 0.03)
-                            border.color: Theme.withAlpha(Theme.outline, 0.15)
-                            border.width: 1
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "edit"
-                                size: 14
-                                color: Theme.surfaceText
-                                opacity: editBtn.containsMouse ? 1.0 : 0.7
-                            }
-                        }
-                    }
-
-
-
-
                 }
             }
 
@@ -701,7 +647,7 @@ DesktopPluginComponent {
 
         // Placeholder when widget is empty (placed outside Column to prevent layout issues)
         StyledText {
-            text: I18n.tr("Click + to add applications")
+            text: I18n.tr("Middle-click to manage applications")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceText
             opacity: 0.4

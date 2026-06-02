@@ -67,11 +67,10 @@ PluginSettings {
         SectionTitle { 
             text: I18n.tr("Appearance & Style")
             icon: "palette" 
-            showReset: backgroundOpacity.isDirty || viewMode.isDirty || showHeader.isDirty
+            showReset: backgroundOpacity.isDirty || viewMode.isDirty
             onResetClicked: {
                 backgroundOpacity.resetToDefault();
                 viewMode.resetToDefault();
-                showHeader.resetToDefault();
             }
         }
 
@@ -100,15 +99,6 @@ PluginSettings {
             ]
             defaultValue: "grid"
         }
-
-        Separator {}
-
-        ToggleSettingPlus {
-            id: showHeader
-            settingKey: "showHeader"
-            label: I18n.tr("Show Launcher Header")
-            defaultValue: true
-        }
     }
 
     SettingsCard {
@@ -125,7 +115,7 @@ PluginSettings {
             items: [
                 I18n.tr("<b>Left-click</b> an app icon to launch it."),
                 I18n.tr("<b>Right-click</b> an app to view actions or pin it."),
-                I18n.tr("Use the <b>Search bar</b> at the top to filter applications quickly."),
+                I18n.tr("<b>Middle-click</b> the background to <b>add or manage</b> applications."),
                 I18n.tr("<b>Resize</b> the launcher window directly from the corners.")
             ]
         }
