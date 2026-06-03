@@ -493,8 +493,9 @@ DesktopPluginComponent {
                             
                             SequentialAnimation {
                                 id: clickLaunchAnimation
-                                NumberAnimation { target: containerRect; property: "scale"; to: 0.88; duration: 60 }
-                                NumberAnimation { target: containerRect; property: "scale"; to: 1.0; duration: 200; easing.type: Easing.OutBack }
+                                NumberAnimation { target: containerRect; property: "scale"; to: 0.92; duration: 100; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: containerRect; property: "scale"; to: 1.05; duration: 150; easing.type: Easing.OutBack }
+                                NumberAnimation { target: containerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
                             }
 
                             Item {
@@ -590,8 +591,9 @@ DesktopPluginComponent {
                             
                             SequentialAnimation {
                                 id: listClickLaunchAnimation
-                                NumberAnimation { target: listContainerRect; property: "scale"; to: 0.98; duration: 60 }
-                                NumberAnimation { target: listContainerRect; property: "scale"; to: 1.0; duration: 100 }
+                                NumberAnimation { target: listContainerRect; property: "scale"; to: 0.98; duration: 100; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: listContainerRect; property: "scale"; to: 1.02; duration: 150; easing.type: Easing.OutBack }
+                                NumberAnimation { target: listContainerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
                             }
 
                             Row {
@@ -696,8 +698,9 @@ DesktopPluginComponent {
 
                             SequentialAnimation {
                                 id: compactClickLaunchAnimation
-                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 0.98; duration: 60 }
-                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.0; duration: 100 }
+                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 0.98; duration: 100; easing.type: Easing.OutQuad }
+                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.02; duration: 150; easing.type: Easing.OutBack }
+                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
                             }
 
                             Row {
