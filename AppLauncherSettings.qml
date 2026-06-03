@@ -67,10 +67,11 @@ PluginSettings {
         SectionTitle { 
             text: I18n.tr("Appearance & Style")
             icon: "palette" 
-            showReset: backgroundOpacity.isDirty || viewMode.isDirty
+            showReset: backgroundOpacity.isDirty || viewMode.isDirty || showHeader.isDirty
             onResetClicked: {
                 backgroundOpacity.resetToDefault();
                 viewMode.resetToDefault();
+                showHeader.resetToDefault();
             }
         }
 
@@ -98,6 +99,16 @@ PluginSettings {
                 { label: I18n.tr("Compact View"), value: "compact" }
             ]
             defaultValue: "grid"
+        }
+
+        Separator {}
+
+        ToggleSettingPlus {
+            id: showHeader
+            settingKey: "showHeader"
+            label: I18n.tr("Show Launcher Header")
+            description: I18n.tr("Show a top header bar with title and search.")
+            defaultValue: false
         }
     }
 

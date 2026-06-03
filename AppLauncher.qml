@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Quickshell
 import qs.Common
 import qs.Widgets
@@ -35,7 +36,7 @@ DesktopPluginComponent {
     // Dynamic settings properties
     readonly property real appSize: pluginData.appSize ?? 88
     readonly property string viewMode: pluginData.viewMode ?? "grid"
-    readonly property bool showHeader: false
+    readonly property bool showHeader: pluginData.showHeader ?? false
     readonly property real backgroundOpacity: (pluginData.backgroundOpacity ?? 80) / 100
     readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
     
@@ -296,6 +297,7 @@ DesktopPluginComponent {
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.MiddleButton
+            hoverEnabled: false // Disable to prevent interference with cursor updates
             onClicked: (mouse) => {
                 if (mouse.button === Qt.MiddleButton) {
                     addAppDialog.openDialog();
@@ -419,6 +421,8 @@ DesktopPluginComponent {
                             anchors.right: parent.right; anchors.rightMargin: 4
                             anchors.verticalCenter: parent.verticalCenter
                             visible: searchContainer.expanded
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 searchField.text = "";
                                 root.searchQuery = "";
@@ -780,24 +784,23 @@ DesktopPluginComponent {
     }
 
     // Modal Manager
-    Rectangle {
+    Popup {
         id: addAppDialog
-        anchors.fill: parent
-        color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.6)
-        radius: Theme.cornerRadius; z: 100; focus: true
-        visible: opened || opacity > 0; opacity: opened ? 1.0 : 0.0
+        width: Math.min(400, root.width - 20)
+        height: Math.min(500, root.height - 20)
+        x: Math.round((root.width - width) / 2)
+        y: Math.round((root.height - height) / 2)
+        modal: true
+        dim: true
+        padding: 0
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-        Behavior on opacity { NumberAnimation { duration: 150 } }
-
-        property bool opened: false
         property var systemAppsList: []
         property string systemAppsSearch: ""
         property string activeTab: "add"
 
-        MouseArea { anchors.fill: parent; hoverEnabled: true }
-
         function openDialog() {
-            systemAppsSearch = ""; opened = true;
+            systemAppsSearch = "";
             if (activeTab === "add") systemSearchField.forceActiveFocus();
             const allEntries = DesktopEntries.applications.values;
             let apps = [];
@@ -813,23 +816,30 @@ DesktopPluginComponent {
             }
             apps.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
             systemAppsList = apps;
+            open();
         }
 
-        function close() { opened = false; }
+        background: Rectangle {
+            color: "transparent"
+        }
 
-        Rectangle {
+        contentItem: Rectangle {
             id: dialogCard
-            width: Math.min(400, parent.width - 20); height: Math.min(500, parent.height - 20)
-            anchors.centerIn: parent; color: Theme.surfaceContainer; radius: Theme.cornerRadius
-            border.color: Theme.withAlpha(Theme.outline, 0.15); border.width: 1; clip: true
-            scale: addAppDialog.opened ? 1.0 : 0.95
-            Behavior on scale { NumberAnimation { duration: 150 } }
+            color: Theme.surfaceContainer
+            radius: Theme.cornerRadius
+            border.color: Theme.withAlpha(Theme.outline, 0.15)
+            border.width: 1
+            clip: true
 
-            Column {
-                anchors.fill: parent; anchors.margins: Theme.spacingM; spacing: Theme.spacingS
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: Theme.spacingM
+                spacing: Theme.spacingS
 
+                // Header
                 Item {
-                    width: parent.width; height: 24
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 24
                     StyledText {
                         text: I18n.tr("Manage Applications")
                         font.bold: true; font.pixelSize: Theme.fontSizeMedium; color: Theme.surfaceText
@@ -843,15 +853,18 @@ DesktopPluginComponent {
                     }
                 }
 
+                // Tabs & Group Creation
                 Row {
-                    width: parent.width; spacing: Theme.spacingS; height: 32
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 32
+                    spacing: Theme.spacingS
                     Rectangle {
                         width: parent.width - 40; height: 32; radius: 16; color: Theme.withAlpha(Theme.surfaceText, 0.05)
                         border.color: Theme.withAlpha(Theme.outline, 0.1); border.width: 1
                         Row {
                             anchors.fill: parent; anchors.margins: 2
                             MouseArea {
-                                id: tabAddBtn; width: parent.width / 2; height: parent.height; cursorShape: Qt.PointingHandCursor
+                                id: tabAddBtn; width: parent.width / 2; height: parent.height; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: addAppDialog.activeTab = "add"
                                 Rectangle {
                                     anchors.fill: parent; radius: 14; color: addAppDialog.activeTab === "add" ? Theme.primary : "transparent"
@@ -864,7 +877,7 @@ DesktopPluginComponent {
                                 }
                             }
                             MouseArea {
-                                id: tabManageBtn; width: parent.width / 2; height: parent.height; cursorShape: Qt.PointingHandCursor
+                                id: tabManageBtn; width: parent.width / 2; height: parent.height; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: addAppDialog.activeTab = "manage"
                                 Rectangle {
                                     anchors.fill: parent; radius: 14; color: addAppDialog.activeTab === "manage" ? Theme.primary : "transparent"
@@ -890,9 +903,16 @@ DesktopPluginComponent {
                     }
                 }
 
+                // Add Apps Search (Only when tab is "add")
                 Rectangle {
-                    visible: addAppDialog.activeTab === "add"; width: parent.width; height: 32; radius: 12
-                    color: Theme.withAlpha(Theme.surfaceText, 0.04); border.color: systemSearchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.1); border.width: 1
+                    visible: addAppDialog.activeTab === "add"
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 32
+                    radius: 12
+                    color: Theme.withAlpha(Theme.surfaceText, 0.04)
+                    border.color: systemSearchField.activeFocus ? Theme.primary : Theme.withAlpha(Theme.outline, 0.1)
+                    border.width: 1
+                    
                     DankIcon { id: sysSearchIcon; name: "search"; size: 14; color: Theme.surfaceText; opacity: 0.5; anchors.left: parent.left; anchors.leftMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter }
                     TextInput {
                         id: systemSearchField; anchors.left: sysSearchIcon.right; anchors.leftMargin: Theme.spacingXS; anchors.right: parent.right; anchors.rightMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
@@ -902,35 +922,58 @@ DesktopPluginComponent {
                     }
                 }
 
+                // Add Apps List
                 ListView {
-                    visible: addAppDialog.activeTab === "add"; width: parent.width; height: dialogCard.height - 180; clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
-                    model: addAppDialog.systemAppsList.filter(app => { const s = addAppDialog.systemAppsSearch.toLowerCase().trim(); return s === "" || app.name.toLowerCase().indexOf(s) !== -1 || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1); })
+                    id: addAppsListView
+                    visible: addAppDialog.activeTab === "add"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
+                    model: {
+                        const s = addAppDialog.systemAppsSearch.toLowerCase().trim();
+                        return addAppDialog.systemAppsList.filter(app => {
+                            return s === "" || (app.name && app.name.toLowerCase().indexOf(s) !== -1) || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1);
+                        });
+                    }
                     delegate: Rectangle {
-                        width: parent.width; height: 38; radius: 6; color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+                        width: addAppsListView.width; height: 38; radius: 6; color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+                        
                         Row {
                             anchors.fill: parent; anchors.leftMargin: Theme.spacingS; spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
                             Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; anchors.verticalCenter: parent.verticalCenter }
                             StyledText { text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; width: parent.width - 80; anchors.verticalCenter: parent.verticalCenter }
                         }
+                        
                         property bool isAdded: root.addedApps.some(a => a.name === modelData.name)
                         Rectangle {
                             width: 22; height: 22; radius: 11; anchors.right: parent.right; anchors.rightMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
                             color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"; border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3); border.width: 1
                             DankIcon { anchors.centerIn: parent; name: isAdded ? "done" : "add"; size: 12; color: isAdded ? Theme.primary : Theme.surfaceText }
                         }
-                        MouseArea { id: listMouseArea; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: isAdded ? root.removeApp(root.addedApps.findIndex(a => a.name === modelData.name)) : root.addApp(modelData) }
+                        
+                        MouseArea {
+                            id: listMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: isAdded ? root.removeApp(root.addedApps.findIndex(a => a.name === modelData.name)) : root.addApp(modelData)
+                        }
                     }
                 }
 
+                // Manage List
                 ListView {
                     id: manageList
-                    visible: addAppDialog.activeTab === "manage"; width: parent.width; height: dialogCard.height - 130; clip: true; spacing: 4; boundsBehavior: Flickable.StopAtBounds
+                    visible: addAppDialog.activeTab === "manage"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true; spacing: 4; boundsBehavior: Flickable.StopAtBounds
                     model: root.addedApps
                     
                     property int editingIndex: -1
 
                     delegate: Rectangle {
-                        width: parent.width; height: !!modelData.isSeparator ? 0 : 38; radius: 6; color: manageItemMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+                        width: manageList.width; height: !!modelData.isSeparator ? 0 : 38; radius: 6; color: manageItemMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
                         visible: !modelData.isSeparator
                         
                         readonly property bool isInsideGroupRange: {
@@ -942,9 +985,7 @@ DesktopPluginComponent {
                             return false;
                         }
 
-                        MouseArea { id: manageItemMouseArea; anchors.fill: parent; hoverEnabled: true }
-                        
-                        // Left Part: Icon and Name
+                        // Content
                         Row {
                             id: leftPart
                             anchors.left: parent.left
@@ -979,6 +1020,15 @@ DesktopPluginComponent {
                             }
                         }
 
+                        // Row-level hover area (Now non-clickable, so use ArrowCursor)
+                        MouseArea {
+                            id: manageItemMouseArea
+                            anchors.fill: leftPart
+                            hoverEnabled: true
+                            cursorShape: Qt.ArrowCursor
+                        }
+
+                        // Specific buttons (ON TOP)
                         Row {
                             id: controlsRow
                             anchors.right: parent.right
@@ -989,11 +1039,10 @@ DesktopPluginComponent {
                             // Rename Button (Pencil icon, only for groups)
                             MouseArea {
                                 id: renameBtn
-                                width: 22; height: 22; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                width: 22; height: 22; hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 visible: !!modelData.isGroup && manageList.editingIndex !== index
-                                onClicked: {
-                                    manageList.editingIndex = index;
-                                }
+                                onClicked: manageList.editingIndex = index
 
                                 DankIcon {
                                     anchors.centerIn: parent
@@ -1004,9 +1053,49 @@ DesktopPluginComponent {
                                 }
                             }
 
-                            MouseArea { id: upBtn; width: 22; height: 22; hoverEnabled: true; onClicked: root.moveAppUp(index); DankIcon { anchors.centerIn: parent; name: "arrow_upward"; size: 14; color: Theme.surfaceText; opacity: index > 0 ? (upBtn.containsMouse ? 1.0 : 0.6) : 0.15 } }
-                            MouseArea { id: downBtn; width: 22; height: 22; hoverEnabled: true; onClicked: root.moveAppDown(index); DankIcon { anchors.centerIn: parent; name: "arrow_downward"; size: 14; color: Theme.surfaceText; opacity: index < root.addedApps.length - 1 ? (downBtn.containsMouse ? 1.0 : 0.6) : 0.15 } }
-                            MouseArea { id: delBtn; width: 22; height: 22; hoverEnabled: true; onClicked: root.removeApp(index); DankIcon { anchors.centerIn: parent; name: "delete"; size: 14; color: delBtn.containsMouse ? Theme.error : Theme.surfaceText; opacity: delBtn.containsMouse ? 1.0 : 0.6 } }
+                            MouseArea {
+                                id: upBtn
+                                width: 22; height: 22; hoverEnabled: true
+                                enabled: index > 0 && !(modelData.isSeparator && root.addedApps[index - 1].isGroup)
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: root.moveAppUp(index)
+                                DankIcon {
+                                    anchors.centerIn: parent
+                                    name: "arrow_upward"
+                                    size: 14
+                                    color: Theme.surfaceText
+                                    opacity: upBtn.enabled ? (upBtn.containsMouse ? 1.0 : 0.6) : 0.15
+                                }
+                            }
+
+                            MouseArea {
+                                id: downBtn
+                                width: 22; height: 22; hoverEnabled: true
+                                enabled: index < root.addedApps.length - 1 && !(modelData.isGroup && root.addedApps[index + 1].isSeparator)
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: root.moveAppDown(index)
+                                DankIcon {
+                                    anchors.centerIn: parent
+                                    name: "arrow_downward"
+                                    size: 14
+                                    color: Theme.surfaceText
+                                    opacity: downBtn.enabled ? (downBtn.containsMouse ? 1.0 : 0.6) : 0.15
+                                }
+                            }
+
+                            MouseArea {
+                                id: delBtn
+                                width: 22; height: 22; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.removeApp(index)
+                                DankIcon {
+                                    anchors.centerIn: parent
+                                    name: "delete"
+                                    size: 14
+                                    color: delBtn.containsMouse ? Theme.error : Theme.surfaceText
+                                    opacity: delBtn.containsMouse ? 1.0 : 0.6
+                                }
+                            }
                         }
                     }
                 }
