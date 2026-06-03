@@ -23,8 +23,8 @@ DesktopPluginComponent {
     // Desktop widget dimensions
     minWidth: 240
     minHeight: 320
-    widgetWidth: pluginData.widgetWidth !== undefined ? pluginData.widgetWidth : 360
-    widgetHeight: pluginData.widgetHeight !== undefined ? pluginData.widgetHeight : 480
+    widgetWidth: root.pluginData?.widgetWidth ?? 360
+    widgetHeight: root.pluginData?.widgetHeight ?? 480
 
     // Properties for search and added apps
     property string searchQuery: ""
@@ -34,14 +34,14 @@ DesktopPluginComponent {
     property int activeGroupIndex: -1 // Index of the Start Marker in addedApps
 
     // Dynamic settings properties
-    readonly property real appSize: pluginData.appSize ?? 88
-    readonly property string viewMode: pluginData.viewMode ?? "grid"
-    readonly property bool showHeader: pluginData.showHeader ?? false
-    readonly property real backgroundOpacity: (pluginData.backgroundOpacity ?? 80) / 100
-    readonly property real iconSize: Math.max(28, Math.round(appSize * 0.58))
+    readonly property real appSize: root.pluginData?.appSize ?? 88
+    readonly property string viewMode: root.pluginData?.viewMode ?? "grid"
+    readonly property bool showHeader: root.pluginData?.showHeader ?? false
+    readonly property real backgroundOpacity: (root.pluginData?.backgroundOpacity ?? 80) / 100
+    readonly property real iconSize: Math.max(28, Math.round(root.appSize * 0.58))
     
     // Flat persistent list of apps and markers
-    property var addedApps: pluginData.addedApps !== undefined ? pluginData.addedApps : []
+    property var addedApps: root.pluginData?.addedApps ?? []
 
     // Reactive array for the current view (Replaces ListModel for deep data support)
     property var filteredApps: []
@@ -257,30 +257,20 @@ DesktopPluginComponent {
         }
     }
 
-    // Component for Group Icon in List/Compact Mode (Row of icons)
+    // Component for Group Icon in List/Compact Mode (Simple Folder Icon)
     Component {
         id: groupListIconComponent
         Item {
-            property var groupApps: []
+            property var groupApps: [] // Kept for compatibility with Loader.onLoaded
             width: parent.width
             height: parent.height
-            anchors.verticalCenter: parent.verticalCenter
             
-            Row {
+            DankIcon {
                 anchors.centerIn: parent
-                spacing: -Math.round(parent.width * 0.2)
-                Repeater {
-                    model: groupApps
-                    delegate: Image {
-                        width: parent.height
-                        height: width
-                        visible: index < 3
-                        source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""
-                        fillMode: Image.PreserveAspectFit
-                        opacity: 0.9
-                        z: 10 - index
-                    }
-                }
+                name: "folder"
+                size: parent.height
+                color: Theme.primary
+                opacity: 0.9
             }
         }
     }
@@ -503,16 +493,17 @@ DesktopPluginComponent {
                             }
 
                             Item {
+                                id: gridIconContainer
                                 width: root.iconSize
                                 height: root.iconSize
                                 anchors.centerIn: parent
+                                scale: appCard.containsMouse ? 1.12 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                 
                                 Loader {
                                     id: gridIconLoader
                                     anchors.fill: parent
                                     sourceComponent: modelData.isGroup ? groupGridIconComponent : appIconLoader
-                                    scale: appCard.containsMouse ? 1.1 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                     onLoaded: {
                                         if (modelData.isGroup && item) {
                                             item.groupApps = delegateRoot.currentGroupApps;
@@ -527,7 +518,6 @@ DesktopPluginComponent {
                                         anchors.fill: parent
                                         source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
                                         fillMode: Image.PreserveAspectFit
-                                        scale: appCard.containsMouse ? 1.08 : 1.0
                                         visible: modelData.appIcon !== ""
                                         onStatusChanged: if (status == Image.Error) { fallbackIcon.visible = true; appImage.visible = false; }
                                     }
@@ -540,8 +530,6 @@ DesktopPluginComponent {
                                     size: parent.width
                                     color: Theme.surfaceText
                                     visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof appImage !== "undefined" && !appImage.visible)) : delegateRoot.currentGroupApps.length === 0
-                                    scale: appCard.containsMouse ? 1.1 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                 }
                             }
                         }
@@ -609,15 +597,16 @@ DesktopPluginComponent {
                                 spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
 
                                 Item {
+                                    id: listIconContainer
                                     width: Math.round(20 * (root.appSize / 88.0)); height: width
                                     anchors.verticalCenter: parent.verticalCenter
+                                    scale: listAppCard.containsMouse ? 1.18 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
                                     Loader {
                                         id: listIconLoader
                                         anchors.fill: parent
                                         sourceComponent: modelData.isGroup ? groupListIconComponent : listAppIconLoader
-                                        scale: listAppCard.containsMouse ? 1.1 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                         onLoaded: { if (modelData.isGroup && item) item.groupApps = listDelegateRoot.currentGroupApps; }
                                     }
 
@@ -640,8 +629,6 @@ DesktopPluginComponent {
                                         size: parent.width
                                         color: Theme.surfaceText
                                         visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof listAppImage !== "undefined" && !listAppImage.visible)) : listDelegateRoot.currentGroupApps.length === 0
-                                        scale: listAppCard.containsMouse ? 1.1 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                     }
                                 }
 
@@ -720,15 +707,16 @@ DesktopPluginComponent {
                                 spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
 
                                 Item {
+                                    id: compactIconContainer
                                     width: Math.round(16 * (root.appSize / 88.0)); height: width
                                     anchors.verticalCenter: parent.verticalCenter
+                                    scale: compactAppCard.containsMouse ? 1.18 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
                                     Loader {
                                         id: compactIconLoader
                                         anchors.fill: parent
                                         sourceComponent: modelData.isGroup ? groupListIconComponent : compactAppIconLoader
-                                        scale: compactAppCard.containsMouse ? 1.1 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                         onLoaded: { if (modelData.isGroup && item) item.groupApps = compactDelegateRoot.currentGroupApps; }
                                     }
 
@@ -751,8 +739,6 @@ DesktopPluginComponent {
                                         size: parent.width
                                         color: Theme.surfaceText
                                         visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof compactAppImage !== "undefined" && !compactAppImage.visible)) : compactDelegateRoot.currentGroupApps.length === 0
-                                        scale: compactAppCard.containsMouse ? 1.1 : 1.0
-                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                     }
                                 }
 
