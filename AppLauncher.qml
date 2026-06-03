@@ -511,6 +511,8 @@ DesktopPluginComponent {
                                     id: gridIconLoader
                                     anchors.fill: parent
                                     sourceComponent: modelData.isGroup ? groupGridIconComponent : appIconLoader
+                                    scale: appCard.containsMouse ? 1.1 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                     onLoaded: {
                                         if (modelData.isGroup && item) {
                                             item.groupApps = delegateRoot.currentGroupApps;
@@ -525,7 +527,6 @@ DesktopPluginComponent {
                                         anchors.fill: parent
                                         source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
                                         fillMode: Image.PreserveAspectFit
-                                        scale: appCard.containsMouse ? 1.08 : 1.0
                                         visible: modelData.appIcon !== ""
                                         onStatusChanged: if (status == Image.Error) { fallbackIcon.visible = true; appImage.visible = false; }
                                     }
@@ -538,7 +539,8 @@ DesktopPluginComponent {
                                     size: parent.width
                                     color: Theme.surfaceText
                                     visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof appImage !== "undefined" && !appImage.visible)) : delegateRoot.currentGroupApps.length === 0
-                                    scale: appCard.containsMouse ? 1.08 : 1.0
+                                    scale: appCard.containsMouse ? 1.1 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                 }
                             }
                         }
@@ -613,6 +615,8 @@ DesktopPluginComponent {
                                         id: listIconLoader
                                         anchors.fill: parent
                                         sourceComponent: modelData.isGroup ? groupListIconComponent : listAppIconLoader
+                                        scale: listAppCard.containsMouse ? 1.1 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                         onLoaded: { if (modelData.isGroup && item) item.groupApps = listDelegateRoot.currentGroupApps; }
                                     }
 
@@ -635,6 +639,8 @@ DesktopPluginComponent {
                                         size: parent.width
                                         color: Theme.surfaceText
                                         visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof listAppImage !== "undefined" && !listAppImage.visible)) : listDelegateRoot.currentGroupApps.length === 0
+                                        scale: listAppCard.containsMouse ? 1.1 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                     }
                                 }
 
@@ -720,6 +726,8 @@ DesktopPluginComponent {
                                         id: compactIconLoader
                                         anchors.fill: parent
                                         sourceComponent: modelData.isGroup ? groupListIconComponent : compactAppIconLoader
+                                        scale: compactAppCard.containsMouse ? 1.1 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                         onLoaded: { if (modelData.isGroup && item) item.groupApps = compactDelegateRoot.currentGroupApps; }
                                     }
 
@@ -742,6 +750,8 @@ DesktopPluginComponent {
                                         size: parent.width
                                         color: Theme.surfaceText
                                         visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof compactAppImage !== "undefined" && !compactAppImage.visible)) : compactDelegateRoot.currentGroupApps.length === 0
+                                        scale: compactAppCard.containsMouse ? 1.1 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                                     }
                                 }
 
