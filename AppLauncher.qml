@@ -218,12 +218,21 @@ DesktopPluginComponent {
         }
     }
 
-    function renameGroup(index, newName) {
+    function updateAppItem(index, newName, newExec) {
         let list = [...root.addedApps];
-        if (index >= 0 && index < list.length && list[index].isGroup) {
-            list[index].name = newName || I18n.tr("Untitled Group");
+        if (index >= 0 && index < list.length) {
+            if (newName !== undefined) {
+                list[index].name = newName || (list[index].isGroup ? I18n.tr("Untitled Group") : list[index].name);
+            }
+            if (newExec !== undefined && !list[index].isGroup && !list[index].isSeparator) {
+                list[index].exec = newExec;
+            }
             saveAddedApps(list);
         }
+    }
+
+    function renameGroup(index, newName) {
+        root.updateAppItem(index, newName, undefined);
     }
 
     // Component for iOS-style Group Icon (Grid Mode - 2x2)

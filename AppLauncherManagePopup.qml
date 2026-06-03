@@ -212,54 +212,90 @@ Popup {
                         return false;
                     }
 
-                    // Content
-                    Row {
+                    // Left Part: Icon and Name/Editor
+                    ColumnLayout {
                         id: leftPart
                         anchors.left: parent.left
                         anchors.leftMargin: Theme.spacingS + (isInsideGroupRange ? 24 : 0)
                         anchors.right: controlsRow.left
                         anchors.rightMargin: Theme.spacingS
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: Theme.spacingS
-                        
-                        DankIcon { name: !!modelData.isGroup ? "folder" : (!!modelData.isSeparator ? "vertical_align_center" : ""); size: 24; color: !!modelData.isGroup ? Theme.primary : Theme.surfaceVariantText; rotation: !!modelData.isSeparator ? 90 : 0; visible: !!modelData.isGroup || !!modelData.isSeparator; anchors.verticalCenter: parent.verticalCenter }
-                        Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; visible: !modelData.isGroup && !modelData.isSeparator; anchors.verticalCenter: parent.verticalCenter }
-                        
-                        StyledText {
-                            text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; width: parent.width; anchors.verticalCenter: parent.verticalCenter
-                            visible: manageList.editingIndex !== index
+                        spacing: Theme.spacingXS
+
+                        Row {
+                            spacing: Theme.spacingS
+                            Layout.fillWidth: true
+                            
+                            DankIcon { name: !!modelData.isGroup ? "folder" : (!!modelData.isSeparator ? "vertical_align_center" : ""); size: 24; color: !!modelData.isGroup ? Theme.primary : Theme.surfaceVariantText; rotation: !!modelData.isSeparator ? 90 : 0; visible: !!modelData.isGroup || !!modelData.isSeparator; anchors.verticalCenter: parent.verticalCenter }
+                            Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; visible: !modelData.isGroup && !modelData.isSeparator; anchors.verticalCenter: parent.verticalCenter }
+                            
+                            StyledText {
+                                text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; Layout.fillWidth: true; anchors.verticalCenter: parent.verticalCenter
+                                visible: manageList.editingIndex !== index
+                            }
+
+                            TextInput {
+                                id: editField
+                                text: modelData.name
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceText
+                                visible: manageList.editingIndex === index
+                                Layout.fillWidth: true
+                                anchors.verticalCenter: parent.verticalCenter
+                                selectByMouse: true
+                                
+                                onVisibleChanged: {
+                                    if (visible) {
+                                        focusTimer.restart();
+                                    }
+                                }
+
+                                Timer {
+                                    id: focusTimer
+                                    interval: 50
+                                    onTriggered: {
+                                        editField.forceActiveFocus();
+                                        editField.selectAll();
+                                    }
+                                }
+
+                                onAccepted: {
+                                    if (modelData.isGroup) {
+                                        managePopup.rootWidget.updateAppItem(index, editField.text, undefined);
+                                    } else {
+                                        managePopup.rootWidget.updateAppItem(index, editField.text, execEditField.text);
+                                    }
+                                    manageList.editingIndex = -1;
+                                }
+                                onEditingFinished: {
+                                    if (manageList.editingIndex === index && !execEditField.activeFocus) {
+                                        manageList.editingIndex = -1;
+                                    }
+                                }
+                            }
                         }
 
+                        // Exec editing field (Only for apps, only when editing)
                         TextInput {
-                            id: editField
-                            text: modelData.name
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceText
-                            visible: manageList.editingIndex === index
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width
+                            id: execEditField
+                            text: modelData.exec || ""
+                            font.pixelSize: Theme.fontSizeSmall - 2
+                            font.family: "monospace"
+                            color: Theme.primary
+                            visible: manageList.editingIndex === index && !modelData.isGroup && !modelData.isSeparator
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 32 // Offset from icon
                             selectByMouse: true
                             
-                            onVisibleChanged: {
-                                if (visible) {
-                                    focusTimer.restart();
-                                }
-                            }
-
-                            Timer {
-                                id: focusTimer
-                                interval: 50
-                                onTriggered: {
-                                    editField.forceActiveFocus();
-                                    editField.selectAll();
-                                }
-                            }
-
                             onAccepted: {
-                                rootWidget.renameGroup(index, text);
+                                managePopup.rootWidget.updateAppItem(index, editField.text, text);
                                 manageList.editingIndex = -1;
                             }
-                            onEditingFinished: manageList.editingIndex = -1
+                            onEditingFinished: {
+                                if (manageList.editingIndex === index && !editField.activeFocus) {
+                                    manageList.editingIndex = -1;
+                                }
+                            }
                         }
                     }
 
@@ -280,12 +316,12 @@ Popup {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 4
 
-                        // Rename Button
+                        // Rename Button (Edit)
                         MouseArea {
                             id: renameBtn
                             width: 22; height: 22; hoverEnabled: true
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            visible: !!modelData.isGroup && manageList.editingIndex !== index
+                            visible: !modelData.isSeparator && manageList.editingIndex !== index
                             onClicked: manageList.editingIndex = index
 
                             DankIcon {
