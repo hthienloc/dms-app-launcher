@@ -201,44 +201,7 @@ Popup {
                 Layout.fillHeight: true
                 spacing: Theme.spacingXS
 
-                ListView {
-                    id: addAppsListView
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
-                    model: {
-                        const s = managePopup.systemAppsSearch.toLowerCase().trim();
-                        return managePopup.systemAppsList.filter(app => {
-                            return s === "" || (app.name && app.name.toLowerCase().indexOf(s) !== -1) || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1);
-                        });
-                    }
-                    delegate: Rectangle {
-                        width: addAppsListView.width; height: 38; radius: 6; color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
-                        
-                        Row {
-                            anchors.fill: parent; anchors.leftMargin: Theme.spacingS; spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
-                            Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; anchors.verticalCenter: parent.verticalCenter }
-                            StyledText { text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; width: parent.width - 80; anchors.verticalCenter: parent.verticalCenter }
-                        }
-                        
-                        property bool isAdded: rootWidget.addedApps.some(a => a.name === modelData.name)
-                        Rectangle {
-                            width: 22; height: 22; radius: 11; anchors.right: parent.right; anchors.rightMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
-                            color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"; border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3); border.width: 1
-                            DankIcon { anchors.centerIn: parent; name: isAdded ? "done" : "add"; size: 12; color: isAdded ? Theme.primary : Theme.surfaceText }
-                        }
-                        
-                        MouseArea {
-                            id: listMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: isAdded ? rootWidget.removeApp(rootWidget.addedApps.findIndex(a => a.name === modelData.name)) : rootWidget.addApp(modelData)
-                        }
-                    }
-                }
-
-                // Alphabet Index Sidebar
+                // Alphabet Index Sidebar (Left side)
                 Item {
                     id: indexSidebar
                     Layout.preferredWidth: 16
@@ -286,6 +249,44 @@ Popup {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Add Apps List (Right side)
+                ListView {
+                    id: addAppsListView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
+                    model: {
+                        const s = managePopup.systemAppsSearch.toLowerCase().trim();
+                        return managePopup.systemAppsList.filter(app => {
+                            return s === "" || (app.name && app.name.toLowerCase().indexOf(s) !== -1) || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1);
+                        });
+                    }
+                    delegate: Rectangle {
+                        width: addAppsListView.width; height: 38; radius: 6; color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+                        
+                        Row {
+                            anchors.fill: parent; anchors.leftMargin: Theme.spacingS; spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
+                            Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; anchors.verticalCenter: parent.verticalCenter }
+                            StyledText { text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; width: parent.width - 80; anchors.verticalCenter: parent.verticalCenter }
+                        }
+                        
+                        property bool isAdded: rootWidget.addedApps.some(a => a.name === modelData.name)
+                        Rectangle {
+                            width: 22; height: 22; radius: 11; anchors.right: parent.right; anchors.rightMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
+                            color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"; border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3); border.width: 1
+                            DankIcon { anchors.centerIn: parent; name: isAdded ? "done" : "add"; size: 12; color: isAdded ? Theme.primary : Theme.surfaceText }
+                        }
+                        
+                        MouseArea {
+                            id: listMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: isAdded ? rootWidget.removeApp(rootWidget.addedApps.findIndex(a => a.name === modelData.name)) : rootWidget.addApp(modelData)
                         }
                     }
                 }
