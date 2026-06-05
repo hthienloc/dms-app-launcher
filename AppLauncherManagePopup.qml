@@ -25,6 +25,51 @@ Popup {
     property var systemAppsList: []
     property string systemAppsSearch: ""
     property string activeTab: "add"
+    property var availableLetters: {
+        let list = [];
+        const apps = systemAppsList || [];
+        for (let i = 0; i < apps.length; i++) {
+            const app = apps[i];
+            if (app && app.name) {
+                const firstChar = app.name.trim().charAt(0).toUpperCase();
+                const target = /^[A-Z]$/.test(firstChar) ? firstChar : "#";
+                if (list.indexOf(target) === -1) {
+                    list.push(target);
+                }
+            }
+        }
+        return list;
+    }
+
+    function jumpToLetter(letter) {
+        const s = systemAppsSearch.toLowerCase().trim();
+        const filtered = systemAppsList.filter(app => {
+            return s === "" || (app.name && app.name.toLowerCase().indexOf(s) !== -1) || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1);
+        });
+
+        let targetIndex = -1;
+        for (let i = 0; i < filtered.length; i++) {
+            const app = filtered[i];
+            if (!app || !app.name) continue;
+            const firstChar = app.name.trim().charAt(0).toUpperCase();
+            
+            if (letter === "#") {
+                if (!/^[A-Z]$/.test(firstChar)) {
+                    targetIndex = i;
+                    break;
+                }
+            } else {
+                if (firstChar === letter) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (targetIndex !== -1) {
+            addAppsListView.positionViewAtIndex(targetIndex, ListView.Beginning);
+        }
+    }
 
     function openDialog() {
         systemAppsSearch = "";
@@ -149,41 +194,99 @@ Popup {
                 }
             }
 
-            // Add Apps List
-            ListView {
-                id: addAppsListView
+            // Add Apps List with Alphabetical Index Sidebar
+            RowLayout {
                 visible: managePopup.activeTab === "add"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
-                model: {
-                    const s = managePopup.systemAppsSearch.toLowerCase().trim();
-                    return managePopup.systemAppsList.filter(app => {
-                        return s === "" || (app.name && app.name.toLowerCase().indexOf(s) !== -1) || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1);
-                    });
+                spacing: Theme.spacingXS
+
+                ListView {
+                    id: addAppsListView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true; spacing: 2; boundsBehavior: Flickable.StopAtBounds
+                    model: {
+                        const s = managePopup.systemAppsSearch.toLowerCase().trim();
+                        return managePopup.systemAppsList.filter(app => {
+                            return s === "" || (app.name && app.name.toLowerCase().indexOf(s) !== -1) || (app.exec && app.exec.toLowerCase().indexOf(s) !== -1);
+                        });
+                    }
+                    delegate: Rectangle {
+                        width: addAppsListView.width; height: 38; radius: 6; color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
+                        
+                        Row {
+                            anchors.fill: parent; anchors.leftMargin: Theme.spacingS; spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
+                            Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; anchors.verticalCenter: parent.verticalCenter }
+                            StyledText { text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; width: parent.width - 80; anchors.verticalCenter: parent.verticalCenter }
+                        }
+                        
+                        property bool isAdded: rootWidget.addedApps.some(a => a.name === modelData.name)
+                        Rectangle {
+                            width: 22; height: 22; radius: 11; anchors.right: parent.right; anchors.rightMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
+                            color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"; border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3); border.width: 1
+                            DankIcon { anchors.centerIn: parent; name: isAdded ? "done" : "add"; size: 12; color: isAdded ? Theme.primary : Theme.surfaceText }
+                        }
+                        
+                        MouseArea {
+                            id: listMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: isAdded ? rootWidget.removeApp(rootWidget.addedApps.findIndex(a => a.name === modelData.name)) : rootWidget.addApp(modelData)
+                        }
+                    }
                 }
-                delegate: Rectangle {
-                    width: addAppsListView.width; height: 38; radius: 6; color: listMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
-                    
-                    Row {
-                        anchors.fill: parent; anchors.leftMargin: Theme.spacingS; spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
-                        Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; anchors.verticalCenter: parent.verticalCenter }
-                        StyledText { text: modelData.name; font.pixelSize: Theme.fontSizeSmall; color: Theme.surfaceText; elide: Text.ElideRight; width: parent.width - 80; anchors.verticalCenter: parent.verticalCenter }
-                    }
-                    
-                    property bool isAdded: rootWidget.addedApps.some(a => a.name === modelData.name)
-                    Rectangle {
-                        width: 22; height: 22; radius: 11; anchors.right: parent.right; anchors.rightMargin: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
-                        color: isAdded ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"; border.color: isAdded ? Theme.primary : Theme.withAlpha(Theme.outline, 0.3); border.width: 1
-                        DankIcon { anchors.centerIn: parent; name: isAdded ? "done" : "add"; size: 12; color: isAdded ? Theme.primary : Theme.surfaceText }
-                    }
-                    
-                    MouseArea {
-                        id: listMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: isAdded ? rootWidget.removeApp(rootWidget.addedApps.findIndex(a => a.name === modelData.name)) : rootWidget.addApp(modelData)
+
+                // Alphabet Index Sidebar
+                Item {
+                    id: indexSidebar
+                    Layout.preferredWidth: 16
+                    Layout.fillHeight: true
+                    visible: addAppsListView.count > 0 && managePopup.systemAppsSearch === ""
+
+                    Column {
+                        id: alphabetColumn
+                        anchors.centerIn: parent
+                        width: parent.width
+                        spacing: 1
+
+                        Repeater {
+                            model: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "#"]
+
+                            delegate: Item {
+                                id: letterItem
+                                required property var modelData
+                                width: parent.width
+                                height: Math.floor(Math.min(13, (indexSidebar.height - 30) / 27))
+
+                                readonly property bool hasApps: managePopup.availableLetters.includes(modelData)
+
+                                HoverHandler {
+                                    id: letterHover
+                                    enabled: letterItem.hasApps
+                                }
+
+                                StyledText {
+                                    anchors.centerIn: parent
+                                    text: modelData
+                                    font.pixelSize: letterHover.hovered ? 9 : 8
+                                    font.bold: hasApps || letterHover.hovered
+                                    color: letterHover.hovered ? Theme.primary : (hasApps ? Theme.surfaceText : Theme.withAlpha(Theme.surfaceText, 0.3))
+                                    opacity: hasApps ? 1.0 : 0.6
+                                    Behavior on font.pixelSize { NumberAnimation { duration: 100 } }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: letterItem.hasApps
+                                    cursorShape: letterItem.hasApps ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: {
+                                        managePopup.jumpToLetter(modelData);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
