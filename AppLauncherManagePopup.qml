@@ -303,10 +303,45 @@ Popup {
                 
                 property int editingIndex: -1
 
+                function getTargetIndex(draggedIndex, centerY) {
+                    let bestIndex = -1;
+                    let bestDistance = 999999;
+                    let childrenList = manageList.contentItem.children;
+                    for (let i = 0; i < childrenList.length; i++) {
+                        let child = childrenList[i];
+                        if (child && child.itemIndex !== undefined) {
+                            if (child.itemIndex === draggedIndex) continue;
+                            if (!child.visible || child.height <= 0) continue;
+                            
+                            let childCenterY = child.y + child.height / 2;
+                            let dist = Math.abs(centerY - childCenterY);
+                            if (dist < bestDistance) {
+                                bestDistance = dist;
+                                bestIndex = child.itemIndex;
+                            }
+                        }
+                    }
+                    return bestIndex;
+                }
+
                 delegate: Rectangle {
+                    id: delegateItem
                     width: manageList.width; height: !!modelData.isSeparator ? 0 : 38; radius: 6; color: manageItemMouseArea.containsMouse ? Theme.withAlpha(Theme.surfaceText, 0.04) : "transparent"
                     visible: !modelData.isSeparator
                     
+                    readonly property int itemIndex: index
+                    property bool held: dragArea.pressed
+                    property real originalY: 0
+                    z: held ? 2 : 1
+                    
+                    Behavior on y {
+                        enabled: !dragArea.held && !dragArea.drag.active
+                        NumberAnimation {
+                            duration: Theme.shortDuration
+                            easing.type: Theme.standardEasing
+                        }
+                    }
+
                     readonly property bool isInsideGroupRange: {
                         if (modelData.isGroup || modelData.isSeparator) return false;
                         for (let k = index - 1; k >= 0; k--) {
@@ -330,6 +365,48 @@ Popup {
                             spacing: Theme.spacingS
                             Layout.fillWidth: true
                             
+                            Item {
+                                width: 18
+                                height: 24
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: !modelData.isSeparator
+
+                                DankIcon {
+                                    name: "drag_indicator"
+                                    size: 16
+                                    color: Theme.surfaceText
+                                    opacity: dragArea.containsMouse || dragArea.pressed ? 1.0 : 0.4
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    id: dragArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.SizeVerCursor
+                                    drag.target: delegateItem.held ? delegateItem : undefined
+                                    drag.axis: Drag.YAxis
+                                    drag.minimumY: -delegateItem.height
+                                    drag.maximumY: manageList.contentHeight
+                                    preventStealing: true
+
+                                    onPressed: {
+                                        delegateItem.originalY = delegateItem.y;
+                                    }
+
+                                    onReleased: {
+                                        if (drag.active) {
+                                            let centerY = delegateItem.y + delegateItem.height / 2;
+                                            let targetIndex = manageList.getTargetIndex(index, centerY);
+                                            if (targetIndex !== -1 && targetIndex !== index) {
+                                                rootWidget.reorderApp(index, targetIndex);
+                                            }
+                                        }
+                                        delegateItem.y = delegateItem.originalY;
+                                    }
+                                }
+                            }
+
                             DankIcon { name: !!modelData.isGroup ? "folder" : (!!modelData.isSeparator ? "vertical_align_center" : ""); size: 24; color: !!modelData.isGroup ? Theme.primary : Theme.surfaceVariantText; rotation: !!modelData.isSeparator ? 90 : 0; visible: !!modelData.isGroup || !!modelData.isSeparator; anchors.verticalCenter: parent.verticalCenter }
                             Image { width: 24; height: 24; source: modelData.icon ? Quickshell.iconPath(modelData.icon) : ""; fillMode: Image.PreserveAspectFit; visible: !modelData.isGroup && !modelData.isSeparator; anchors.verticalCenter: parent.verticalCenter }
                             
@@ -434,36 +511,6 @@ Popup {
                                 size: 14
                                 color: Theme.surfaceText
                                 opacity: renameBtn.containsMouse ? 1.0 : 0.6
-                            }
-                        }
-
-                        MouseArea {
-                            id: upBtn
-                            width: 22; height: 22; hoverEnabled: true
-                            enabled: index > 0 && !(modelData.isSeparator && rootWidget.addedApps[index - 1].isGroup)
-                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: rootWidget.moveAppUp(index)
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "arrow_upward"
-                                size: 14
-                                color: Theme.surfaceText
-                                opacity: upBtn.enabled ? (upBtn.containsMouse ? 1.0 : 0.6) : 0.15
-                            }
-                        }
-
-                        MouseArea {
-                            id: downBtn
-                            width: 22; height: 22; hoverEnabled: true
-                            enabled: index < rootWidget.addedApps.length - 1 && !(modelData.isGroup && rootWidget.addedApps[index + 1].isSeparator)
-                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: rootWidget.moveAppDown(index)
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "arrow_downward"
-                                size: 14
-                                color: Theme.surfaceText
-                                opacity: downBtn.enabled ? (downBtn.containsMouse ? 1.0 : 0.6) : 0.15
                             }
                         }
 

@@ -218,6 +218,43 @@ DesktopPluginComponent {
         }
     }
 
+    function reorderApp(fromIndex, toIndex) {
+        if (fromIndex >= 0 && fromIndex < root.addedApps.length &&
+            toIndex >= 0 && toIndex < root.addedApps.length &&
+            fromIndex !== toIndex) {
+            
+            let list = [...root.addedApps];
+            
+            // Find the slice of items to move
+            let sliceStart = fromIndex;
+            let sliceEnd = fromIndex;
+            if (list[fromIndex].isGroup) {
+                // Find matching separator
+                let j = fromIndex + 1;
+                while (j < list.length && !list[j].isSeparator) {
+                    j++;
+                }
+                if (j < list.length) {
+                    sliceEnd = j;
+                }
+            }
+            
+            // If the target is inside the slice itself, do nothing
+            if (toIndex >= sliceStart && toIndex <= sliceEnd) {
+                return;
+            }
+            
+            let slice = list.splice(sliceStart, sliceEnd - sliceStart + 1);
+            let insertIndex = toIndex;
+            if (toIndex > sliceEnd) {
+                insertIndex = toIndex - (sliceEnd - sliceStart + 1) + 1;
+            }
+            list.splice(insertIndex, 0, ...slice);
+            saveAddedApps(list);
+        }
+    }
+
+
     function updateAppItem(index, newName, newExec) {
         let list = [...root.addedApps];
         if (index >= 0 && index < list.length) {
