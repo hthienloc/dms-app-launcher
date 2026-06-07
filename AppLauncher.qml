@@ -192,6 +192,22 @@ DesktopPluginComponent {
         }
     }
 
+    function copyApp(index) {
+        let list = [...root.addedApps];
+        if (index >= 0 && index < list.length) {
+            const item = list[index];
+            if (!item.isGroup && !item.isSeparator) {
+                const duplicated = {
+                    name: item.name,
+                    icon: item.icon,
+                    exec: item.exec
+                };
+                list.splice(index + 1, 0, duplicated);
+                saveAddedApps(list);
+            }
+        }
+    }
+
     function moveAppUp(index) {
         if (index > 0) {
             let list = [...root.addedApps];

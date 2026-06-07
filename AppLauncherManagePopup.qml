@@ -514,6 +514,23 @@ Popup {
                             }
                         }
 
+                        // Copy Button
+                        MouseArea {
+                            id: copyBtn
+                            width: 22; height: 22; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            visible: !modelData.isGroup && !modelData.isSeparator && manageList.editingIndex !== index
+                            onClicked: rootWidget.copyApp(index)
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "content_copy"
+                                size: 14
+                                color: Theme.surfaceText
+                                opacity: copyBtn.containsMouse ? 1.0 : 0.6
+                            }
+                        }
+
                         MouseArea {
                             id: delBtn
                             width: 22; height: 22; hoverEnabled: true
