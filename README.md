@@ -43,3 +43,4 @@ GPL-3.0
 - [x] **Size Cycle Button:** Dynamic scaling button in the header toolbar.
 - [x] **Flatpak & Snap Scanning:** Support Flatpak and Snap sandboxes.
 - [x] **Tactile Animations:** Snappy scale-bounce feedback on click.
+- [ ] **UI Refinement:** Improve the "Add App" manager interface to be more intuitive and modern.
