@@ -9,6 +9,5 @@
     "component": "./AppLauncher.qml",
     "settings": "./AppLauncherSettings.qml",
     "icon": "apps",
-    "requires_dms": ">=1.5.0",
     "permissions": ["settings_read", "settings_write"]
 }
