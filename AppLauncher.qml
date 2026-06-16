@@ -39,6 +39,51 @@ DesktopPluginComponent {
     readonly property bool showHeader: root.pluginData?.showHeader ?? false
     readonly property real backgroundOpacity: (root.pluginData?.backgroundOpacity ?? 80) / 100
     readonly property real iconSize: Math.max(28, Math.round(root.appSize * 0.58))
+    readonly property bool showIndexBar: root.pluginData?.showIndexBar ?? false
+    readonly property string indexBarPosition: root.pluginData?.indexBarPosition ?? "right"
+
+    // Alphabet search/fast scroll state
+    property string selectedLetter: "★"
+    property string activeLetter: ""
+    property bool isPressingIndex: false
+    readonly property var alphabet: ["★", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "#"]
+
+    // Reactive list of all system apps
+    property var allSystemApps: {
+        const allEntries = DesktopEntries.applications.values;
+        let apps = [];
+        for (let i = 0; i < allEntries.length; i++) {
+            const app = allEntries[i];
+            if (app && !app.noDisplay) {
+                apps.push({
+                    appName: app.name || "",
+                    appExec: root.cleanExec(app.execString || (app.command ? app.command.join(" ") : "")),
+                    appIcon: app.icon || "",
+                    isGroup: false,
+                    originalIndex: -1,
+                    groupApps: []
+                });
+            }
+        }
+        apps.sort((a, b) => (a.appName || "").localeCompare(b.appName || ""));
+        return apps;
+    }
+
+    property var availableLetters: {
+        let list = [];
+        const apps = allSystemApps || [];
+        for (let i = 0; i < apps.length; i++) {
+            const app = apps[i];
+            if (app && app.appName) {
+                const firstChar = app.appName.trim().charAt(0).toUpperCase();
+                const target = /^[A-Z]$/.test(firstChar) ? firstChar : "#";
+                if (list.indexOf(target) === -1) {
+                    list.push(target);
+                }
+            }
+        }
+        return list;
+    }
     
     // Flat persistent list of apps and markers
     property var addedApps: root.pluginData?.addedApps ?? []
@@ -51,70 +96,95 @@ DesktopPluginComponent {
         const search = searchQuery.toLowerCase().trim();
         let result = [];
         
-        if (activeGroupIndex === -1) {
-            // Root View: Show standalone apps and Group Tiles
-            for (let i = 0; i < addedApps.length; i++) {
-                const item = addedApps[i];
-                if (item.isGroup) {
-                    let groupApps = [];
-                    let j = i + 1;
-                    while (j < addedApps.length && !addedApps[j].isSeparator) {
-                        if (!addedApps[j].isGroup) groupApps.push(addedApps[j]);
-                        j++;
+        if (selectedLetter === "★") {
+            if (activeGroupIndex === -1) {
+                // Root View: Show standalone apps and Group Tiles
+                for (let i = 0; i < addedApps.length; i++) {
+                    const item = addedApps[i];
+                    if (item.isGroup) {
+                        let groupApps = [];
+                        let j = i + 1;
+                        while (j < addedApps.length && !addedApps[j].isSeparator) {
+                            if (!addedApps[j].isGroup) groupApps.push(addedApps[j]);
+                            j++;
+                        }
+                        
+                        const matchesSearch = search === "" || 
+                                              item.name.toLowerCase().indexOf(search) !== -1 ||
+                                              groupApps.some(a => a.name.toLowerCase().indexOf(search) !== -1);
+                                              
+                        if (matchesSearch) {
+                            result.push({
+                                appName: item.name,
+                                appIcon: "",
+                                appExec: "",
+                                isGroup: true,
+                                originalIndex: i,
+                                groupApps: groupApps
+                            });
+                        }
+                        i = j; 
+                    } else if (!item.isSeparator) {
+                        const matchesSearch = search === "" || 
+                                              item.name.toLowerCase().indexOf(search) !== -1 ||
+                                              (item.exec && item.exec.toLowerCase().indexOf(search) !== -1);
+                        if (matchesSearch) {
+                            result.push({
+                                appName: item.name,
+                                appIcon: item.icon || "",
+                                appExec: item.exec || "",
+                                isGroup: false,
+                                originalIndex: i,
+                                groupApps: []
+                            });
+                        }
                     }
-                    
-                    const matchesSearch = search === "" || 
-                                          item.name.toLowerCase().indexOf(search) !== -1 ||
-                                          groupApps.some(a => a.name.toLowerCase().indexOf(search) !== -1);
-                                          
-                    if (matchesSearch) {
-                        result.push({
-                            appName: item.name,
-                            appIcon: "",
-                            appExec: "",
-                            isGroup: true,
-                            originalIndex: i,
-                            groupApps: groupApps
-                        });
+                }
+            } else {
+                // Inside Group View
+                let i = activeGroupIndex + 1;
+                while (i < addedApps.length && !addedApps[i].isSeparator) {
+                    const item = addedApps[i];
+                    if (!item.isGroup) {
+                        const matchesSearch = search === "" || 
+                                              item.name.toLowerCase().indexOf(search) !== -1 ||
+                                              (item.exec && item.exec.toLowerCase().indexOf(search) !== -1);
+                        if (matchesSearch) {
+                            result.push({
+                                appName: item.name,
+                                appIcon: item.icon || "",
+                                appExec: item.exec || "",
+                                isGroup: false,
+                                originalIndex: i,
+                                groupApps: []
+                            });
+                        }
                     }
-                    i = j; 
-                } else if (!item.isSeparator) {
-                    const matchesSearch = search === "" || 
-                                          item.name.toLowerCase().indexOf(search) !== -1 ||
-                                          (item.exec && item.exec.toLowerCase().indexOf(search) !== -1);
-                    if (matchesSearch) {
-                        result.push({
-                            appName: item.name,
-                            appIcon: item.icon || "",
-                            appExec: item.exec || "",
-                            isGroup: false,
-                            originalIndex: i,
-                            groupApps: []
-                        });
-                    }
+                    i++;
                 }
             }
         } else {
-            // Inside Group View
-            let i = activeGroupIndex + 1;
-            while (i < addedApps.length && !addedApps[i].isSeparator) {
-                const item = addedApps[i];
-                if (!item.isGroup) {
+            // Letter View: Show all system apps starting with the selected letter
+            for (let i = 0; i < allSystemApps.length; i++) {
+                const app = allSystemApps[i];
+                if (!app || !app.appName) continue;
+                const firstChar = app.appName.trim().charAt(0).toUpperCase();
+                
+                let matchesLetter = false;
+                if (selectedLetter === "#") {
+                    matchesLetter = !/^[A-Z]$/.test(firstChar);
+                } else {
+                    matchesLetter = (firstChar === selectedLetter);
+                }
+                
+                if (matchesLetter) {
                     const matchesSearch = search === "" || 
-                                          item.name.toLowerCase().indexOf(search) !== -1 ||
-                                          (item.exec && item.exec.toLowerCase().indexOf(search) !== -1);
+                                          app.appName.toLowerCase().indexOf(search) !== -1 ||
+                                          (app.appExec && app.appExec.toLowerCase().indexOf(search) !== -1);
                     if (matchesSearch) {
-                        result.push({
-                            appName: item.name,
-                            appIcon: item.icon || "",
-                            appExec: item.exec || "",
-                            isGroup: false,
-                            originalIndex: i,
-                            groupApps: []
-                        });
+                        result.push(app);
                     }
                 }
-                i++;
             }
         }
         root.filteredApps = result;
@@ -123,6 +193,8 @@ DesktopPluginComponent {
     onSearchQueryChanged: updateFilteredModel()
     onAddedAppsChanged: updateFilteredModel()
     onActiveGroupIndexChanged: updateFilteredModel()
+    onSelectedLetterChanged: updateFilteredModel()
+    onAllSystemAppsChanged: updateFilteredModel()
 
     Component.onCompleted: updateFilteredModel()
 
@@ -337,6 +409,88 @@ DesktopPluginComponent {
         }
     }
 
+    // Alphabet Index Sidebar component
+    Component {
+        id: indexBarComponent
+        Item {
+            anchors.fill: parent
+
+            Rectangle {
+                anchors.fill: parent
+                radius: Theme.cornerRadiusSmall
+                color: Theme.withAlpha(Theme.surfaceText, indexMouseArea.containsMouse ? 0.05 : 0.0)
+                Behavior on color { ColorAnimation { duration: 150 } }
+            }
+
+            Column {
+                id: letterCol
+                anchors.fill: parent
+                spacing: 0
+
+                Repeater {
+                    model: root.alphabet
+                    delegate: Item {
+                        width: parent.width
+                        height: parent.height / root.alphabet.length
+
+                        readonly property bool hasApps: root.availableLetters.includes(modelData) || modelData === "★"
+                        readonly property bool isHovered: root.activeLetter === modelData
+                        readonly property bool isSelected: root.selectedLetter === modelData
+
+                        StyledText {
+                            anchors.centerIn: parent
+                            text: modelData
+                            font.pixelSize: isHovered || isSelected ? 11 : 9
+                            font.bold: isHovered || isSelected || hasApps
+                            color: isHovered || isSelected ? Theme.primary : (hasApps ? Theme.surfaceText : Theme.withAlpha(Theme.surfaceText, 0.25))
+                            opacity: hasApps ? 1.0 : 0.6
+                            Behavior on font.pixelSize { NumberAnimation { duration: 100 } }
+                        }
+                    }
+                }
+            }
+
+            MouseArea {
+                id: indexMouseArea
+                anchors.fill: parent
+                preventStealing: true
+                hoverEnabled: true
+
+                function handleMove(mouseY, isClick) {
+                    if (height <= 0) return;
+                    let cellHeight = height / root.alphabet.length;
+                    let idx = Math.floor(mouseY / cellHeight);
+                    idx = Math.max(0, Math.min(idx, root.alphabet.length - 1));
+                    let letter = root.alphabet[idx];
+
+                    if (root.activeLetter !== letter) {
+                        root.activeLetter = letter;
+                        if (isClick && (root.availableLetters.includes(letter) || letter === "★")) {
+                            root.selectedLetter = letter;
+                        }
+                    }
+                }
+
+                onPressed: (mouse) => {
+                    root.isPressingIndex = true;
+                    handleMove(mouse.y, true);
+                }
+                onPositionChanged: (mouse) => {
+                    handleMove(mouse.y, pressed);
+                }
+                onReleased: {
+                    root.isPressingIndex = false;
+                    root.activeLetter = "";
+                }
+                onExited: {
+                    if (!pressed) {
+                        root.activeLetter = "";
+                    }
+                }
+            }
+        }
+    }
+
     // Glassmorphic Premium Background
     Rectangle {
         anchors.fill: parent
@@ -494,327 +648,361 @@ DesktopPluginComponent {
                 }
             }
 
-            // Apps Grid
-            GridView {
-                id: appsGrid
+            // Row layout containing optional left index bar, views, and optional right index bar
+            Row {
                 width: parent.width
                 height: parent.height - ((root.showHeader || root.activeGroupIndex !== -1) ? (24 + Theme.spacingS * 2) : 0)
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                visible: root.viewMode === "grid"
-                cellWidth: Math.floor(width / Math.max(2, Math.floor(width / root.appSize)))
-                cellHeight: cellWidth
-                model: root.filteredApps
+                spacing: Theme.spacingS
 
-                delegate: Item {
-                    id: delegateRoot
-                    width: appsGrid.cellWidth
-                    height: appsGrid.cellHeight
-                    readonly property var currentGroupApps: modelData.groupApps
+                // Left Index Bar
+                Loader {
+                    id: leftIndexBarLoader
+                    active: root.showIndexBar && root.indexBarPosition === "left"
+                    visible: active
+                    sourceComponent: indexBarComponent
+                    width: 16
+                    height: parent.height
+                }
 
-                    MouseArea {
-                        id: appCard
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                // Views Container
+                Item {
+                    id: viewsContainer
+                    width: parent.width - (leftIndexBarLoader.visible ? (leftIndexBarLoader.width + Theme.spacingS) : 0) - (rightIndexBarLoader.visible ? (rightIndexBarLoader.width + Theme.spacingS) : 0)
+                    height: parent.height
 
-                        onClicked: (mouse) => {
-                            if (modelData.isGroup) {
-                                if (mouse.button === Qt.MiddleButton) {
-                                    clickLaunchAnimation.start();
-                                    for (let i = 0; i < delegateRoot.currentGroupApps.length; i++) {
-                                        Quickshell.execDetached(["sh", "-c", cleanExec(delegateRoot.currentGroupApps[i].exec)]);
+                    // Apps Grid
+                    GridView {
+                        id: appsGrid
+                        width: parent.width
+                        height: parent.height
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        visible: root.viewMode === "grid"
+                        cellWidth: Math.floor(width / Math.max(2, Math.floor(width / root.appSize)))
+                        cellHeight: cellWidth
+                        model: root.filteredApps
+
+                        delegate: Item {
+                            id: delegateRoot
+                            width: appsGrid.cellWidth
+                            height: appsGrid.cellHeight
+                            readonly property var currentGroupApps: modelData.groupApps
+
+                            MouseArea {
+                                id: appCard
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+
+                                onClicked: (mouse) => {
+                                    if (modelData.isGroup) {
+                                        if (mouse.button === Qt.MiddleButton) {
+                                            clickLaunchAnimation.start();
+                                            for (let i = 0; i < delegateRoot.currentGroupApps.length; i++) {
+                                                Quickshell.execDetached(["sh", "-c", cleanExec(delegateRoot.currentGroupApps[i].exec)]);
+                                            }
+                                        } else {
+                                            root.searchQuery = "";
+                                            root.activeGroupIndex = modelData.originalIndex;
+                                        }
+                                    } else {
+                                        clickLaunchAnimation.start();
+                                        Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
                                     }
-                                } else {
-                                    root.searchQuery = "";
-                                    root.activeGroupIndex = modelData.originalIndex;
                                 }
-                            } else {
-                                clickLaunchAnimation.start();
-                                Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
-                            }
-                        }
 
-                        Rectangle {
-                            id: containerRect
-                            width: Math.round(root.iconSize * 1.45)
-                            height: width
-                            anchors.centerIn: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: appCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.25) : Theme.withAlpha(Theme.primary, 0.12)
-                            border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.45)
-                            border.width: appCard.containsMouse ? 2 : 1
-                            
-                            SequentialAnimation {
-                                id: clickLaunchAnimation
-                                NumberAnimation { target: containerRect; property: "scale"; to: 0.92; duration: 100; easing.type: Easing.OutQuad }
-                                NumberAnimation { target: containerRect; property: "scale"; to: 1.05; duration: 150; easing.type: Easing.OutBack }
-                                NumberAnimation { target: containerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
-                            }
+                                Rectangle {
+                                    id: containerRect
+                                    width: Math.round(root.iconSize * 1.45)
+                                    height: width
+                                    anchors.centerIn: parent
+                                    radius: Math.round(Theme.cornerRadius / 2)
+                                    color: appCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.25) : Theme.withAlpha(Theme.primary, 0.12)
+                                    border.color: appCard.containsMouse ? Theme.primary : Theme.withAlpha(Theme.primary, 0.45)
+                                    border.width: appCard.containsMouse ? 2 : 1
+                                    
+                                    SequentialAnimation {
+                                        id: clickLaunchAnimation
+                                        NumberAnimation { target: containerRect; property: "scale"; to: 0.92; duration: 100; easing.type: Easing.OutQuad }
+                                        NumberAnimation { target: containerRect; property: "scale"; to: 1.05; duration: 150; easing.type: Easing.OutBack }
+                                        NumberAnimation { target: containerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
+                                    }
 
-                            Item {
-                                id: gridIconContainer
-                                width: root.iconSize
-                                height: root.iconSize
-                                anchors.centerIn: parent
-                                scale: appCard.containsMouse ? 1.12 : 1.0
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-                                
-                                Loader {
-                                    id: gridIconLoader
-                                    anchors.fill: parent
-                                    sourceComponent: modelData.isGroup ? groupGridIconComponent : appIconLoader
-                                    onLoaded: {
-                                        if (modelData.isGroup && item) {
-                                            item.groupApps = delegateRoot.currentGroupApps;
+                                    Item {
+                                        id: gridIconContainer
+                                        width: root.iconSize
+                                        height: root.iconSize
+                                        anchors.centerIn: parent
+                                        scale: appCard.containsMouse ? 1.12 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+                                        
+                                        Loader {
+                                            id: gridIconLoader
+                                            anchors.fill: parent
+                                            sourceComponent: modelData.isGroup ? groupGridIconComponent : appIconLoader
+                                            onLoaded: {
+                                                if (modelData.isGroup && item) {
+                                                    item.groupApps = delegateRoot.currentGroupApps;
+                                                }
+                                            }
+                                        }
+
+                                        Component {
+                                            id: appIconLoader
+                                            Image {
+                                                id: appImage
+                                                anchors.fill: parent
+                                                source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
+                                                fillMode: Image.PreserveAspectFit
+                                                visible: modelData.appIcon !== ""
+                                                onStatusChanged: if (status == Image.Error) { fallbackIcon.visible = true; appImage.visible = false; }
+                                            }
+                                        }
+
+                                        DankIcon {
+                                            id: fallbackIcon
+                                            anchors.fill: parent
+                                            name: modelData.isGroup ? "folder" : "extension"
+                                            size: parent.width
+                                            color: Theme.surfaceText
+                                            visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof appImage !== "undefined" && !appImage.visible)) : delegateRoot.currentGroupApps.length === 0
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
 
-                                Component {
-                                    id: appIconLoader
-                                    Image {
-                                        id: appImage
-                                        anchors.fill: parent
-                                        source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
-                                        fillMode: Image.PreserveAspectFit
-                                        visible: modelData.appIcon !== ""
-                                        onStatusChanged: if (status == Image.Error) { fallbackIcon.visible = true; appImage.visible = false; }
+                    // Apps List
+                    ListView {
+                        id: appsList
+                        width: parent.width
+                        height: parent.height
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        visible: root.viewMode === "list"
+                        spacing: 2
+                        model: root.filteredApps
+
+                        delegate: Item {
+                            id: listDelegateRoot
+                            width: appsList.width
+                            height: Math.round(36 * (root.appSize / 88.0))
+                            readonly property var currentGroupApps: modelData.groupApps
+
+                            MouseArea {
+                                id: listAppCard
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacingXS; anchors.rightMargin: Theme.spacingXS
+                                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+
+                                onClicked: (mouse) => {
+                                    if (modelData.isGroup) {
+                                        if (mouse.button === Qt.MiddleButton) {
+                                            listClickLaunchAnimation.start();
+                                            for (let i = 0; i < listDelegateRoot.currentGroupApps.length; i++) {
+                                                Quickshell.execDetached(["sh", "-c", cleanExec(listDelegateRoot.currentGroupApps[i].exec)]);
+                                            }
+                                        } else {
+                                            root.searchQuery = "";
+                                            root.activeGroupIndex = modelData.originalIndex;
+                                        }
+                                    } else {
+                                        listClickLaunchAnimation.start();
+                                        Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
                                     }
                                 }
 
-                                DankIcon {
-                                    id: fallbackIcon
+                                Rectangle {
+                                    id: listContainerRect
                                     anchors.fill: parent
-                                    name: modelData.isGroup ? "folder" : "extension"
-                                    size: parent.width
-                                    color: Theme.surfaceText
-                                    visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof appImage !== "undefined" && !appImage.visible)) : delegateRoot.currentGroupApps.length === 0
+                                    radius: Math.round(Theme.cornerRadius / 2)
+                                    color: listAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
+                                    
+                                    SequentialAnimation {
+                                        id: listClickLaunchAnimation
+                                        NumberAnimation { target: listContainerRect; property: "scale"; to: 0.98; duration: 100; easing.type: Easing.OutQuad }
+                                        NumberAnimation { target: listContainerRect; property: "scale"; to: 1.02; duration: 150; easing.type: Easing.OutBack }
+                                        NumberAnimation { target: listContainerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
+                                    }
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: Theme.spacingS; anchors.rightMargin: Theme.spacingS
+                                        spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
+
+                                        Item {
+                                            id: listIconContainer
+                                            width: Math.round(20 * (root.appSize / 88.0)); height: width
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            scale: listAppCard.containsMouse ? 1.18 : 1.0
+                                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                                            Loader {
+                                                id: listIconLoader
+                                                anchors.fill: parent
+                                                sourceComponent: modelData.isGroup ? groupListIconComponent : listAppIconLoader
+                                                onLoaded: { if (modelData.isGroup && item) item.groupApps = listDelegateRoot.currentGroupApps; }
+                                            }
+
+                                            Component {
+                                                id: listAppIconLoader
+                                                Image {
+                                                    id: listAppImage
+                                                    anchors.fill: parent
+                                                    source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
+                                                    fillMode: Image.PreserveAspectFit
+                                                    visible: modelData.appIcon !== ""
+                                                    onStatusChanged: if (status == Image.Error) { listFallbackIcon.visible = true; listAppImage.visible = false; }
+                                                }
+                                            }
+
+                                            DankIcon {
+                                                id: listFallbackIcon
+                                                anchors.fill: parent
+                                                name: modelData.isGroup ? "folder" : "extension"
+                                                size: parent.width
+                                                color: Theme.surfaceText
+                                                visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof listAppImage !== "undefined" && !listAppImage.visible)) : listDelegateRoot.currentGroupApps.length === 0
+                                            }
+                                        }
+
+                                        StyledText {
+                                            text: modelData.appName
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            color: Theme.surfaceText
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            elide: Text.ElideRight
+                                            width: parent.width - parent.spacing - Math.round(20 * (root.appSize / 88.0))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Apps Compact
+                    GridView {
+                        id: appsCompact
+                        width: parent.width
+                        height: parent.height
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        visible: root.viewMode === "compact"
+                        cellWidth: parent.width > 280 ? parent.width / 2 : parent.width
+                        cellHeight: Math.round(30 * (root.appSize / 88.0))
+                        model: root.filteredApps
+
+                        delegate: Item {
+                            id: compactDelegateRoot
+                            width: appsCompact.cellWidth
+                            height: appsCompact.cellHeight
+                            readonly property var currentGroupApps: modelData.groupApps
+
+                            MouseArea {
+                                id: compactAppCard
+                                anchors.fill: parent
+                                anchors.leftMargin: Theme.spacingXS; anchors.rightMargin: Theme.spacingXS
+                                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+
+                                onClicked: (mouse) => {
+                                    if (modelData.isGroup) {
+                                        if (mouse.button === Qt.MiddleButton) {
+                                            compactClickLaunchAnimation.start();
+                                            for (let i = 0; i < compactDelegateRoot.currentGroupApps.length; i++) {
+                                                Quickshell.execDetached(["sh", "-c", cleanExec(compactDelegateRoot.currentGroupApps[i].exec)]);
+                                            }
+                                        } else {
+                                            root.searchQuery = "";
+                                            root.activeGroupIndex = modelData.originalIndex;
+                                        }
+                                    } else {
+                                        compactClickLaunchAnimation.start();
+                                        Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
+                                    }
+                                }
+
+                                Rectangle {
+                                    id: compactContainerRect
+                                    anchors.fill: parent
+                                    radius: Math.round(Theme.cornerRadius / 2)
+                                    color: compactAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
+
+                                    SequentialAnimation {
+                                        id: compactClickLaunchAnimation
+                                        NumberAnimation { target: compactContainerRect; property: "scale"; to: 0.98; duration: 100; easing.type: Easing.OutQuad }
+                                        NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.02; duration: 150; easing.type: Easing.OutBack }
+                                        NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
+                                    }
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: Theme.spacingS; anchors.rightMargin: Theme.spacingS
+                                        spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
+
+                                        Item {
+                                            id: compactIconContainer
+                                            width: Math.round(16 * (root.appSize / 88.0)); height: width
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            scale: compactAppCard.containsMouse ? 1.18 : 1.0
+                                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                                            Loader {
+                                                id: compactIconLoader
+                                                anchors.fill: parent
+                                                sourceComponent: modelData.isGroup ? groupListIconComponent : compactAppIconLoader
+                                                onLoaded: { if (modelData.isGroup && item) item.groupApps = compactDelegateRoot.currentGroupApps; }
+                                            }
+
+                                            Component {
+                                                id: compactAppIconLoader
+                                                Image {
+                                                    id: compactAppImage
+                                                    anchors.fill: parent
+                                                    source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
+                                                    fillMode: Image.PreserveAspectFit
+                                                    visible: modelData.appIcon !== ""
+                                                    onStatusChanged: if (status == Image.Error) { compactFallbackIcon.visible = true; compactAppImage.visible = false; }
+                                                }
+                                            }
+
+                                            DankIcon {
+                                                id: compactFallbackIcon
+                                                anchors.fill: parent
+                                                name: modelData.isGroup ? "folder" : "extension"
+                                                size: parent.width
+                                                color: Theme.surfaceText
+                                                visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof compactAppImage !== "undefined" && !compactAppImage.visible)) : compactDelegateRoot.currentGroupApps.length === 0
+                                            }
+                                        }
+
+                                        StyledText {
+                                            text: modelData.appName
+                                            font.pixelSize: Theme.fontSizeSmall - 1
+                                            color: Theme.surfaceText
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            elide: Text.ElideRight
+                                            width: parent.width - parent.spacing - Math.round(16 * (root.appSize / 88.0))
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // Apps List
-            ListView {
-                id: appsList
-                width: parent.width
-                height: parent.height - ((root.showHeader || root.activeGroupIndex !== -1) ? (24 + Theme.spacingS * 2) : 0)
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                visible: root.viewMode === "list"
-                spacing: 2
-                model: root.filteredApps
-
-                delegate: Item {
-                    id: listDelegateRoot
-                    width: appsList.width
-                    height: Math.round(36 * (root.appSize / 88.0))
-                    readonly property var currentGroupApps: modelData.groupApps
-
-                    MouseArea {
-                        id: listAppCard
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.spacingXS; anchors.rightMargin: Theme.spacingXS
-                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-
-                        onClicked: (mouse) => {
-                            if (modelData.isGroup) {
-                                if (mouse.button === Qt.MiddleButton) {
-                                    listClickLaunchAnimation.start();
-                                    for (let i = 0; i < listDelegateRoot.currentGroupApps.length; i++) {
-                                        Quickshell.execDetached(["sh", "-c", cleanExec(listDelegateRoot.currentGroupApps[i].exec)]);
-                                    }
-                                } else {
-                                    root.searchQuery = "";
-                                    root.activeGroupIndex = modelData.originalIndex;
-                                }
-                            } else {
-                                listClickLaunchAnimation.start();
-                                Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
-                            }
-                        }
-
-                        Rectangle {
-                            id: listContainerRect
-                            anchors.fill: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: listAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
-                            
-                            SequentialAnimation {
-                                id: listClickLaunchAnimation
-                                NumberAnimation { target: listContainerRect; property: "scale"; to: 0.98; duration: 100; easing.type: Easing.OutQuad }
-                                NumberAnimation { target: listContainerRect; property: "scale"; to: 1.02; duration: 150; easing.type: Easing.OutBack }
-                                NumberAnimation { target: listContainerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
-                            }
-
-                            Row {
-                                anchors.fill: parent
-                                anchors.leftMargin: Theme.spacingS; anchors.rightMargin: Theme.spacingS
-                                spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
-
-                                Item {
-                                    id: listIconContainer
-                                    width: Math.round(20 * (root.appSize / 88.0)); height: width
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    scale: listAppCard.containsMouse ? 1.18 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-
-                                    Loader {
-                                        id: listIconLoader
-                                        anchors.fill: parent
-                                        sourceComponent: modelData.isGroup ? groupListIconComponent : listAppIconLoader
-                                        onLoaded: { if (modelData.isGroup && item) item.groupApps = listDelegateRoot.currentGroupApps; }
-                                    }
-
-                                    Component {
-                                        id: listAppIconLoader
-                                        Image {
-                                            id: listAppImage
-                                            anchors.fill: parent
-                                            source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
-                                            fillMode: Image.PreserveAspectFit
-                                            visible: modelData.appIcon !== ""
-                                            onStatusChanged: if (status == Image.Error) { listFallbackIcon.visible = true; listAppImage.visible = false; }
-                                        }
-                                    }
-
-                                    DankIcon {
-                                        id: listFallbackIcon
-                                        anchors.fill: parent
-                                        name: modelData.isGroup ? "folder" : "extension"
-                                        size: parent.width
-                                        color: Theme.surfaceText
-                                        visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof listAppImage !== "undefined" && !listAppImage.visible)) : listDelegateRoot.currentGroupApps.length === 0
-                                    }
-                                }
-
-                                StyledText {
-                                    text: modelData.appName
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    color: Theme.surfaceText
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    elide: Text.ElideRight
-                                    width: parent.width - parent.spacing - Math.round(20 * (root.appSize / 88.0))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Apps Compact
-            GridView {
-                id: appsCompact
-                width: parent.width
-                height: parent.height - ((root.showHeader || root.activeGroupIndex !== -1) ? (24 + Theme.spacingS * 2) : 0)
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
-                visible: root.viewMode === "compact"
-                cellWidth: parent.width > 280 ? parent.width / 2 : parent.width
-                cellHeight: Math.round(30 * (root.appSize / 88.0))
-                model: root.filteredApps
-
-                delegate: Item {
-                    id: compactDelegateRoot
-                    width: appsCompact.cellWidth
-                    height: appsCompact.cellHeight
-                    readonly property var currentGroupApps: modelData.groupApps
-
-                    MouseArea {
-                        id: compactAppCard
-                        anchors.fill: parent
-                        anchors.leftMargin: Theme.spacingXS; anchors.rightMargin: Theme.spacingXS
-                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-
-                        onClicked: (mouse) => {
-                            if (modelData.isGroup) {
-                                if (mouse.button === Qt.MiddleButton) {
-                                    compactClickLaunchAnimation.start();
-                                    for (let i = 0; i < compactDelegateRoot.currentGroupApps.length; i++) {
-                                        Quickshell.execDetached(["sh", "-c", cleanExec(compactDelegateRoot.currentGroupApps[i].exec)]);
-                                    }
-                                } else {
-                                    root.searchQuery = "";
-                                    root.activeGroupIndex = modelData.originalIndex;
-                                }
-                            } else {
-                                compactClickLaunchAnimation.start();
-                                Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
-                            }
-                        }
-
-                        Rectangle {
-                            id: compactContainerRect
-                            anchors.fill: parent
-                            radius: Math.round(Theme.cornerRadius / 2)
-                            color: compactAppCard.containsMouse ? Theme.withAlpha(Theme.primary, 0.15) : "transparent"
-
-                            SequentialAnimation {
-                                id: compactClickLaunchAnimation
-                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 0.98; duration: 100; easing.type: Easing.OutQuad }
-                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.02; duration: 150; easing.type: Easing.OutBack }
-                                NumberAnimation { target: compactContainerRect; property: "scale"; to: 1.0; duration: 100; easing.type: Easing.OutQuad }
-                            }
-
-                            Row {
-                                anchors.fill: parent
-                                anchors.leftMargin: Theme.spacingS; anchors.rightMargin: Theme.spacingS
-                                spacing: Theme.spacingS; anchors.verticalCenter: parent.verticalCenter
-
-                                Item {
-                                    id: compactIconContainer
-                                    width: Math.round(16 * (root.appSize / 88.0)); height: width
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    scale: compactAppCard.containsMouse ? 1.18 : 1.0
-                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
-
-                                    Loader {
-                                        id: compactIconLoader
-                                        anchors.fill: parent
-                                        sourceComponent: modelData.isGroup ? groupListIconComponent : compactAppIconLoader
-                                        onLoaded: { if (modelData.isGroup && item) item.groupApps = compactDelegateRoot.currentGroupApps; }
-                                    }
-
-                                    Component {
-                                        id: compactAppIconLoader
-                                        Image {
-                                            id: compactAppImage
-                                            anchors.fill: parent
-                                            source: modelData.appIcon ? Quickshell.iconPath(modelData.appIcon) : ""
-                                            fillMode: Image.PreserveAspectFit
-                                            visible: modelData.appIcon !== ""
-                                            onStatusChanged: if (status == Image.Error) { compactFallbackIcon.visible = true; compactAppImage.visible = false; }
-                                        }
-                                    }
-
-                                    DankIcon {
-                                        id: compactFallbackIcon
-                                        anchors.fill: parent
-                                        name: modelData.isGroup ? "folder" : "extension"
-                                        size: parent.width
-                                        color: Theme.surfaceText
-                                        visible: !modelData.isGroup ? (modelData.appIcon === "" || (typeof compactAppImage !== "undefined" && !compactAppImage.visible)) : compactDelegateRoot.currentGroupApps.length === 0
-                                    }
-                                }
-
-                                StyledText {
-                                    text: modelData.appName
-                                    font.pixelSize: Theme.fontSizeSmall - 1
-                                    color: Theme.surfaceText
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    elide: Text.ElideRight
-                                    width: parent.width - parent.spacing - Math.round(16 * (root.appSize / 88.0))
-                                }
-                            }
-                        }
-                    }
+                // Right Index Bar
+                Loader {
+                    id: rightIndexBarLoader
+                    active: root.showIndexBar && root.indexBarPosition === "right"
+                    visible: active
+                    sourceComponent: indexBarComponent
+                    width: 16
+                    height: parent.height
                 }
             }
         }
@@ -838,6 +1026,45 @@ DesktopPluginComponent {
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceText
                 anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+
+        // Active letter preview overlay
+        Rectangle {
+            id: letterPreviewOverlay
+            anchors.centerIn: parent
+            width: 80
+            height: 80
+            radius: 40
+            color: Theme.withAlpha(Theme.primary, 0.9)
+            border.color: Theme.withAlpha(Theme.onPrimary, 0.2)
+            border.width: 1
+            z: 1000
+
+            readonly property bool active: root.activeLetter !== "" && root.isPressingIndex
+
+            // Scale and opacity animations
+            scale: active ? 1.0 : 0.0
+            opacity: active ? 1.0 : 0.0
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: 200
+                    easing.type: letterPreviewOverlay.active ? Easing.OutBack : Easing.OutQuad
+                }
+            }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 150
+                }
+            }
+
+            StyledText {
+                anchors.centerIn: parent
+                text: root.activeLetter
+                font.pixelSize: 40
+                font.bold: true
+                color: Theme.onPrimary
             }
         }
     }

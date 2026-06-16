@@ -67,11 +67,13 @@ PluginSettings {
         SectionTitle { 
             text: I18n.tr("Appearance & Style")
             icon: "palette" 
-            showReset: backgroundOpacity.isDirty || viewMode.isDirty || showHeader.isDirty
+            showReset: backgroundOpacity.isDirty || viewMode.isDirty || showHeader.isDirty || showIndexBar.isDirty || indexBarPosition.isDirty
             onResetClicked: {
                 backgroundOpacity.resetToDefault();
                 viewMode.resetToDefault();
                 showHeader.resetToDefault();
+                showIndexBar.resetToDefault();
+                indexBarPosition.resetToDefault();
             }
         }
 
@@ -109,6 +111,30 @@ PluginSettings {
             label: I18n.tr("Show Launcher Header")
             description: I18n.tr("Show a top header bar with title and search.")
             defaultValue: false
+        }
+
+        Separator {}
+
+        ToggleSettingPlus {
+            id: showIndexBar
+            settingKey: "showIndexBar"
+            label: I18n.tr("Show Alphabet Index Bar")
+            description: I18n.tr("Show a scrollable alphabet bar to quickly jump to apps.")
+            defaultValue: false
+        }
+
+        Separator { visible: showIndexBar.value }
+
+        ButtonGroupSettingPlus {
+            id: indexBarPosition
+            settingKey: "indexBarPosition"
+            label: I18n.tr("Index Bar Position")
+            visible: showIndexBar.value
+            options: [
+                { label: I18n.tr("Left"), value: "left" },
+                { label: I18n.tr("Right"), value: "right" }
+            ]
+            defaultValue: "right"
         }
     }
 
