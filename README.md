@@ -2,6 +2,8 @@
 
 An application launcher widget for DankMaterialShell (DMS) to search and launch applications.
 
+> Alternative features and customizations can be found in the derivative [dms-conky fork by suruibin](https://github.com/suruibin/dms-conky).
+
 <img src="screenshot.png" width="400" alt="Screenshot">
 
 ## Install
@@ -45,6 +47,3 @@ MIT
 - [x] **Tactile Animations:** Snappy scale-bounce feedback on click.
 - [x] **UI Refinement:** Improve the "Add App" manager interface to be more intuitive and modern.
 
-## Credits
-
-Alternative features and customizations can be found in the derivative [dms-conky fork by suruibin](https://github.com/suruibin/dms-conky).
