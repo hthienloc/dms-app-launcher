@@ -36,7 +36,7 @@ git clone https://github.com/hthienloc/dms-app-launcher ~/.config/DankMaterialSh
 
 ## License
 
-GPL-3.0
+MIT
 
 ## Roadmap / TODO
 
