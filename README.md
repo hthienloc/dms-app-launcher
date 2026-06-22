@@ -44,3 +44,7 @@ GPL-3.0
 - [x] **Flatpak & Snap Scanning:** Support Flatpak and Snap sandboxes.
 - [x] **Tactile Animations:** Snappy scale-bounce feedback on click.
 - [x] **UI Refinement:** Improve the "Add App" manager interface to be more intuitive and modern.
+
+## Credits
+
+Alternative features and customizations can be found in the derivative [dms-conky fork by suruibin](https://github.com/suruibin/dms-conky).
