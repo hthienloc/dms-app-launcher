@@ -6,7 +6,7 @@ import "./dms-common"
 
 PluginSettings {
     id: root
-    pluginId: "dmsAppLauncher"
+    pluginId: "appLauncher"
 
     SettingsCard {
         id: layoutSection
