@@ -20,6 +20,19 @@ DesktopPluginComponent {
         return clean.trim();
     }
 
+    function launchCommand(execStr) {
+        const command = root.cleanExec(execStr);
+        if (command.length === 0) return "";
+        const prefix = (root.launchPrefix || "").trim();
+        return prefix.length > 0 ? `${prefix} ${command}` : command;
+    }
+
+    function launchApp(execStr) {
+        const command = root.launchCommand(execStr);
+        if (command.length === 0) return;
+        Quickshell.execDetached(["sh", "-c", command]);
+    }
+
     // Desktop widget dimensions
     minWidth: 240
     minHeight: 320
@@ -41,6 +54,7 @@ DesktopPluginComponent {
     readonly property real iconSize: Math.max(28, Math.round(root.appSize * 0.58))
     readonly property bool showIndexBar: root.pluginData?.showIndexBar ?? false
     readonly property string indexBarPosition: root.pluginData?.indexBarPosition ?? "right"
+    readonly property string launchPrefix: root.pluginData?.launchPrefix ?? "systemd-run --user --scope"
 
     // Alphabet search/fast scroll state
     property string selectedLetter: "★"
@@ -701,7 +715,7 @@ DesktopPluginComponent {
                                         if (mouse.button === Qt.MiddleButton) {
                                             clickLaunchAnimation.start();
                                             for (let i = 0; i < delegateRoot.currentGroupApps.length; i++) {
-                                                Quickshell.execDetached(["sh", "-c", cleanExec(delegateRoot.currentGroupApps[i].exec)]);
+                                                root.launchApp(delegateRoot.currentGroupApps[i].exec);
                                             }
                                         } else {
                                             root.searchQuery = "";
@@ -709,7 +723,7 @@ DesktopPluginComponent {
                                         }
                                     } else {
                                         clickLaunchAnimation.start();
-                                        Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
+                                        root.launchApp(modelData.appExec);
                                     }
                                 }
 
@@ -804,7 +818,7 @@ DesktopPluginComponent {
                                         if (mouse.button === Qt.MiddleButton) {
                                             listClickLaunchAnimation.start();
                                             for (let i = 0; i < listDelegateRoot.currentGroupApps.length; i++) {
-                                                Quickshell.execDetached(["sh", "-c", cleanExec(listDelegateRoot.currentGroupApps[i].exec)]);
+                                                root.launchApp(listDelegateRoot.currentGroupApps[i].exec);
                                             }
                                         } else {
                                             root.searchQuery = "";
@@ -812,7 +826,7 @@ DesktopPluginComponent {
                                         }
                                     } else {
                                         listClickLaunchAnimation.start();
-                                        Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
+                                        root.launchApp(modelData.appExec);
                                     }
                                 }
 
@@ -914,7 +928,7 @@ DesktopPluginComponent {
                                         if (mouse.button === Qt.MiddleButton) {
                                             compactClickLaunchAnimation.start();
                                             for (let i = 0; i < compactDelegateRoot.currentGroupApps.length; i++) {
-                                                Quickshell.execDetached(["sh", "-c", cleanExec(compactDelegateRoot.currentGroupApps[i].exec)]);
+                                                root.launchApp(compactDelegateRoot.currentGroupApps[i].exec);
                                             }
                                         } else {
                                             root.searchQuery = "";
@@ -922,7 +936,7 @@ DesktopPluginComponent {
                                         }
                                     } else {
                                         compactClickLaunchAnimation.start();
-                                        Quickshell.execDetached(["sh", "-c", cleanExec(modelData.appExec)]);
+                                        root.launchApp(modelData.appExec);
                                     }
                                 }
 

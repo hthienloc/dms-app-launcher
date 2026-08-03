@@ -139,6 +139,25 @@ PluginSettings {
     }
 
     SettingsCard {
+        id: launchSection
+        SectionTitle {
+            text: I18n.tr("Launch Behavior")
+            icon: "terminal"
+            showReset: launchPrefix.isDirty
+            onResetClicked: launchPrefix.resetToDefault()
+        }
+
+        StringSettingPlus {
+            id: launchPrefix
+            settingKey: "launchPrefix"
+            label: I18n.tr("Launch Prefix")
+            description: I18n.tr("Prefix used for application launches. The default systemd scope helps launched apps survive a DMS crash. You can clear it or use wrappers like 'uwsm-app'.")
+            placeholder: I18n.tr("Enter launch prefix")
+            defaultValue: "systemd-run --user --scope"
+        }
+    }
+
+    SettingsCard {
         SectionTitle { 
             id: usageTitle
             text: I18n.tr("Usage Guide")
