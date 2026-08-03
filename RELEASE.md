@@ -1,16 +1,9 @@
-# Release Notes - v2.2.0
+# Release Notes - v2.2.2
 
 ## New Features
-- **App Grouping**: Organize your apps into folders with an iOS-style 2x2 grid preview.
-- **Batch Launch**: Middle-click any group icon to instantly launch all applications inside.
-- **Minimalist Design**: Removed the header for an ultra-clean, content-first interface.
-- **Improved Management**:
-    - **Inline Renaming**: Rename folders directly within the management list.
-    - **Visual Hierarchy**: Nested apps are now indented for a clearer overview.
-    - **Safety Guards**: Prevents invalid folder structures during reordering.
+- **Launch Prefix**: Added a configurable prefix for application launches.
+- **Crash Isolation Default**: New launches use `systemd-run --user --scope` by default so apps started from the widget can survive a DMS crash.
 
 ## Improvements & Fixes
-- **Smart Gestures**: Middle-click any blank space to open the management dialog.
-- **Enhanced Comfort**: Enlarged the management dialog for easier organization.
-- **Launch Stability**: Fixed compatibility issues by stripping desktop entry Exec codes.
-- **Tactile Feedback**: Added scale-bounce animations for batch launching groups.
+- **Unified Launch Path**: Grid, list, compact, and batch group launches now use the same launch helper.
+- **Settings UI**: Added a Launch Behavior section where the prefix can be changed, cleared, or set to wrappers like `uwsm-app`.
